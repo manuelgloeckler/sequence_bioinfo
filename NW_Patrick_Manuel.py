@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+
 import numpy as np
 
 """Basic Needleman-Wunsch"""
@@ -36,7 +37,7 @@ class Score:
     Hints: you may not need it
     """
 
-    def __init__(self, match=1, mismatch=-2, gap=3, best_score=None):
+    def __init__(self, match=1, mismatch=-1, gap=4, best_score=None):
         self.match = match
         self.mismatch = mismatch
         self.gap = gap
@@ -68,9 +69,10 @@ def parse_score(path):
             subst = row[0]
             del row[0]
             for j in range(len(row)):
-                score_dict[(alphabet[j], subst)] = row[j].strip()
+                score_dict[(alphabet[j], subst)] = int(row[j].strip())
         i+=1
     return score_dict
+
 
 def gotho_matrix_builder(x_seq, y_seq, score, d, e):
     ncol = len(x_seq) + 1
@@ -86,21 +88,32 @@ def gotho_matrix_builder(x_seq, y_seq, score, d, e):
                 M[i][j] = 0
                 I_x[i][j] = -np.inf
                 I_y[i][j] = -np.inf
-            elif i == 0:
+            elif i == 0 and j != 0:
                 M[i][j] = -np.inf
-                I_x[i][j] = -d + (j)
+                I_x[i][j] = -np.inf
+                I_y[i][j] = -d - (j - 1)*e
+            elif j == 0 and i != 0:
+                M[i][j] = -np.inf
+                I_x[i][j] = -d - (i - 1) *e
                 I_y[i][j] = -np.inf
-            elif j == 0:
-                matF[i][j] = i * (- score.gap)
-                matT[i][j] = 2
             else:
-                s = score.match if x_seq[j - 1] == y_seq[i - 1] else score.mismatch
-                diag = matF[i - 1][j - 1] + s
-                top = matF[i - 1][j] - score.gap
-                left = matF[i][j - 1] - score.gap
-                matF[i][j], matT[i][j] = _tracking_guide(diag, top, left)
+                if isinstance(score, Score):
+                    s = score.match if x_seq[j - 1] == y_seq[i - 1] else score.mismatch
+                elif isinstance(score, dict):
+                    s = score[(x_seq[j - 1], y_seq[i - 1])]
+                else:
+                    s = 0
+                    # TODO throw error
+                M[i][j] = max(M[i - 1][j - 1] + s, I_x[i - 1][j - 1] + s, I_y[i - 1][j - 1] + s)
+                I_x[i][j] = max(M[i - 1][j] - d, I_x[i - 1][j] - e)
+                I_y[i][j] = max(M[i][j - 1] - d, I_y[i][j - 1] - e)
 
-    return True
+            # diag = matF[i - 1][j - 1] + s
+                # top = matF[i - 1][j] - score.gap
+                # left = matF[i][j - 1] - score.gap
+                # matF[i][j], matT[i][j] = _tracking_guide(diag, top, left)
+
+    return M, I_x, I_y
 
 
 
@@ -220,8 +233,6 @@ def main():
     parser = init_parser()
     args = parser.parse_args()
 
-    print(args.gap)
-
     print("Program: global aligner with linear gap cost")
     print("Author:", __author__)
 
@@ -229,6 +240,11 @@ def main():
     if args.gap or args.gap == 0: score.gap = args.gap
     if args.match or args.match == 0: score.match = args.match
     if args.mismatch: score.mismatch = args.mismatch
+    # TODO add with args
+    # score = parse_score('./BLOSUM62.txt')
+
+    print(gotho_matrix_builder("TTAGT","TTG",score,4,1)[0])
+    return
 
     print("Parameters used in the algorithm:")
     print("\tMatch Score: " + str(score.match))
