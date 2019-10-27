@@ -324,7 +324,7 @@ def main():
     args = parser.parse_args()
     check_args(args, parser)
 
-    print("Program: global aligner with linear gap cost")
+    print("Program: Aligner")
     print("Author:", __author__)
 
     score = Score()
@@ -354,8 +354,7 @@ def main():
             print(" Best score: " + str(score.best_score))
 
     else:
-        M, I_x, I_y = gotho_matrix_builder(x_seq,y_seq,score,args.open,args.extend)
-        score, a_x, a_y = gotho_traceback(M, I_x, I_y, x_seq, y_seq,args.open,args.extend)
+        score, a_x, a_y = run_gotho(x_seq, y_seq, score, args.open,args.extend)
         if args.output:
             f = open(args.output,"w+")
             f.write("Alignment with affine cost:" + "\n")
