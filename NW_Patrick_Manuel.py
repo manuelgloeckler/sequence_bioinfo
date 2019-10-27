@@ -10,26 +10,7 @@ __author__ = "Patrick Schirm, Manuel Gloeckler"
 """
 The script is created by the above-mentioned two students for the same course 1 year ago
 This script implements basic Needleman-Wunsch algorithm.
-Gap cost is linear. Command line argument parsing is not included.
-
-	To-dos for those who wants to use this script:
-	modify the code so that:
-	- you can easily change the scoring scheme
-	- the initialization, recursion and traceback steps are clear.
-	These will make it way easier to switch to other algorithms
-	- it allows commandline options, as follows (set defaults as you see fit):
-	#  <input-file> read sequences from named file
-	#  <output-file> write aligned sequences to named fasta file
-	#  <score>: Set match score.
-	#  <score>: Set mismatch score.
-	#  <score>: Set gap penalty.
-	- it might be able to catch some possible error
-
-
-
-
 """
-
 
 
 class Score:
@@ -115,6 +96,7 @@ def gotho_matrix_builder(x_seq, y_seq, score, d, e):
 
     return M, I_x, I_y
 
+
 def gotho_traceback(M, I_x, I_y, x_seq, y_seq, d, e):
     ncol = len(x_seq) + 1
     nrow = len(y_seq) + 1
@@ -124,7 +106,7 @@ def gotho_traceback(M, I_x, I_y, x_seq, y_seq, d, e):
     i = nrow -1
     j = ncol -1
 
-    # Pickung max end score and the corresponding matrix where it is reached.
+    # Picking max end score and the corresponding matrix where it is reached.
     maxs = [(M[i][j]), (I_x[i][j]), (I_y[i][j] )]
     score = max(maxs)
     matrix = maxs.index(max(maxs))
@@ -181,10 +163,7 @@ def gotho_traceback(M, I_x, I_y, x_seq, y_seq, d, e):
                 j -= 1
             matrix = 2
 
-
     return score, result_x[::-1], result_y[::-1]
-
-
 
 
 # compute alignment score
@@ -245,10 +224,10 @@ def traceback_to_alignment(matT, x_seq, y_seq):
         j -= 1
     return x_aligned[::-1], y_aligned[::-1]
 
-def run_gotho(x_seq, y_seq, score, d, e):
 
+def run_gotho(x_seq, y_seq, score, d, e):
     # Dummy checks
-    if (d < e):
+    if d < e:
         raise Exception("You choice d < e does not make sense, rethink your parameters")
 
     if not isinstance(score, Score) or isinstance(score, dict):
@@ -282,23 +261,25 @@ def seq_file_reader(input_file):
 
 
 def init_parser():
-    # change 1
     parser = argparse.ArgumentParser(description='Needleman-Wunsch',prog="pqa", formatter_class=argparse.RawDescriptionHelpFormatter)
     optional = parser._action_groups.pop()
     required = parser.add_argument_group('required arguments')
     required.add_argument("-i", "--input", metavar="", type=str, help="File paths to both required files", required=True, nargs=2)
     optional.add_argument("-o", "--output", metavar="", type=str, help="File output path")
+    # optional.add_argument("-single", metavar="", help="one best output")
+    # optional.add_argument("-all", metavar="", help="all best alignments as output")
     optional.add_argument("-d", "--gap", metavar="", type=check_positive, help="give gap penalty")
+    optional.add_argument("-ad", "--affine", action="store_true", help="give affine gap penalty, use -open and -extend for penalties as positive integers")
+    optional.add_argument("-open", metavar="", type=check_positive, help="If affine penalty, please specify the gap open cost")
+    optional.add_argument("-extend", metavar="", type=check_positive, help="If affine penalty, please specify the gap extension cost")
     optional.add_argument("-ms", "--match", metavar="", type=check_positive, help="give match score")
     optional.add_argument("-mms", "--mismatch", metavar="", type=check_negative, help="give mismatch score")
-    optional.add_argument("-single", metavar="", help="one best output")
-    optional.add_argument("-all", metavar="", help="all best alignments as output")
+    optional.add_argument('-sm', '--matrix', action="store_true", help="use the blossum62 matrix for (miss) match scoring")
     parser._action_groups.append(optional)
     return parser
 
 
 def check_negative(value):
-    # change 2
     val = int(value)
     if val >=0:
         raise argparse.ArgumentTypeError("%s is an invalid positive in value")
@@ -312,10 +293,27 @@ def check_positive(value):
     return val
 
 
+def check_args(args, parser):
+    if (not args.affine) and (not args.gap):
+        parser.error("--affine or --gap is required")
+    if (not args.mismatch or not args.match) and (not args.matrix):
+        parser.error("--match and --mismatch together or --matrix is required")
+    if args.affine and (not args.open or (not args.extend)):
+        parser.error("--affine requires -open and -extend")
+    if args.affine and args.gap:
+        parser.error("--affine and --gap can not be used together")
+    if (args.match or args.mismatch) and (args.matrix):
+        parser.error("--match or --mismatch can not be used with --matrix")
+    if args.gap and (args.open or args.extend):
+        parser.error("when using the -gap parameter, -open and -extend can not be used")
+    if (args.extend and args.open) and (args.extend > args.open):
+        parser.error("extend cost can not be greater than opening cost")
+
+
 def main():
-    # parser for user input
     parser = init_parser()
     args = parser.parse_args()
+    check_args(args, parser)
 
     print("Program: global aligner with linear gap cost")
     print("Author:", __author__)
@@ -324,42 +322,44 @@ def main():
     if args.gap or args.gap == 0: score.gap = args.gap
     if args.match or args.match == 0: score.match = args.match
     if args.mismatch: score.mismatch = args.mismatch
-    # TODO add with args
-    # score = parse_score('./BLOSUM62.txt')
-
-    M, I_x, I_y = gotho_matrix_builder("TTTAAAATTTAAAA","TTTTTTTTT",score,4,1)
-    print(M)
-    print(I_x)
-    print(I_y)
-    score, a_x, a_y = gotho_traceback(M, I_x, I_y, "TTTAAAATTTAAAA", "TTTTTTTTT",4,1)
-    print(score)
-    print(a_x)
-    print(a_y)
-    return
-
-    print("Parameters used in the algorithm:")
-    print("\tMatch Score: " + str(score.match))
-    print("\tMismatch Score: " + str(score.mismatch))
-    print("\tGap Penalty: " + str(score.gap))
+    if args.matrix:
+        score = parse_score('./BLOSUM62.txt')
 
     x_header, x_seq = seq_file_reader(args.input[0])
     y_header,y_seq = seq_file_reader(args.input[1])
 
-    # aligned_x, aligned_y = run_nw(x_seq[0:5], y_seq[0:5], score)
-    aligned_x, aligned_y = run_nw(x_seq, y_seq, score)
+    if args.gap:
+        aligned_x, aligned_y = run_nw(x_seq, y_seq, score)
+        # print("Alignment with linear cost:")
+        # print("\n".join([x_header, aligned_x, y_header, aligned_y]))
+        # print(" Best score: " + str(score.best_score))
+        if args.output:
+            f = open(args.output,"w+")
+            f.write("Alignment with linear cost:" + "\n")
+            f.write(x_header + "\n")
+            f.write(aligned_x + "\n")
+            f.write(y_header + "\n")
+            f.write(aligned_y + "\n")
+            f.write("Best Score: {}".format(score.best_score))
+            f.close()
+    else:
+        M, I_x, I_y = gotho_matrix_builder(x_seq,y_seq,score,args.open,args.extend)
+        score, a_x, a_y = gotho_traceback(M, I_x, I_y, x_seq, y_seq,args.open,args.extend)
+        # print("Alignment with affine cost:")
+        # print(a_x)
+        # print(a_y)
+        # print("Best score: " + str(score))
+        if args.output:
+            f = open(args.output,"w+")
+            f.write("Alignment with affine cost:" + "\n")
+            f.write(x_header + "\n")
+            f.write(a_x + "\n")
+            f.write(y_header + "\n")
+            f.write(a_y + "\n")
+            f.write("Best score: " + str(score))
+            f.close()
 
-    print("Alignment:")
-    print("\n".join([x_header, aligned_x, y_header, aligned_y]))
-
-    if args.output:
-        f = open(args.output,"w+")
-        f.write("Alignment:" + "\n")
-        f.write(x_header + "\n")
-        f.write(aligned_x + "\n")
-        f.write(y_header + "\n")
-        f.write(aligned_y + "\n")
-        f.write("Best Score: {}".format(score.best_score))
-        f.close()
+    print("finished")
 
 
 if __name__ == "__main__":
