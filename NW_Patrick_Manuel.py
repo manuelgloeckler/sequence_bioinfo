@@ -115,6 +115,79 @@ def gotho_matrix_builder(x_seq, y_seq, score, d, e):
 
     return M, I_x, I_y
 
+def gotho_traceback(M, I_x, I_y, x_seq, y_seq, score, d, e):
+    ncol = len(x_seq) + 1
+    nrow = len(y_seq) + 1
+    result_x = ""
+    result_y = ""
+
+    i = nrow -1
+    j = ncol -1
+
+    maxs = [(M[i][j]), (I_x[i][j]), (I_y[i][j] )]
+    matrix = maxs.index(max(maxs))
+
+    while i > 0 and j > 0:
+
+        if isinstance(score, Score):
+            s = score.match if x_seq[j - 1] == y_seq[i - 1] else score.mismatch
+        elif isinstance(score, dict):
+            s = score[(x_seq[j - 1], y_seq[i - 1])]
+        else:
+            s = 0
+            # TODO throw error
+
+        if matrix == 0:
+            vals = np.array([(M[i-1][j-1]) + s, (I_x[i-1][j-1] + s), (I_y[i-1][j-1] + s)])
+            trace = list(np.where(vals == max(vals))[0])
+        elif matrix == 1:
+            vals = np.array([M[i-1][j] - d, I_x[i-1][j] -e, - np.inf])
+            trace = list(np.where(vals == max(vals))[0])
+        elif matrix == 2:
+            vals = np.array([M[i][j-1] - d, -np.inf, I_y[i][j-1] - e])
+            trace = list(np.where(vals == max(vals))[0])
+
+        if 0 in trace:
+            if matrix == 1:
+                result_x += "-"
+                result_y += y_seq[i-1]
+                i -= 1
+            elif matrix == 2:
+                result_x += x_seq[j-1]
+                result_y += "-"
+                j -= 1
+            else:
+                result_x += x_seq[j-1]
+                result_y += y_seq[i-1]
+                i -= 1
+                j -= 1
+            matrix = 0
+        elif 1 in trace:
+            if matrix == 0:
+                result_x += x_seq[j - 1]
+                result_y += y_seq[i - 1]
+                i -= 1
+                j -= 1
+            else:
+                result_x += "-"
+                result_y += y_seq[i-1]
+                i -= 1
+            matrix = 1
+        elif 2 in trace:
+            if matrix == 0:
+                result_x += x_seq[j - 1]
+                result_y += y_seq[i - 1]
+                i -= 1
+                j -= 1
+            else:
+                result_x += x_seq[j-1]
+                result_y += "-"
+                j -= 1
+            matrix = 2
+
+
+    return result_x[::-1], result_y[::-1]
+
 
 
 
@@ -243,7 +316,13 @@ def main():
     # TODO add with args
     # score = parse_score('./BLOSUM62.txt')
 
-    print(gotho_matrix_builder("TTAGT","TTG",score,4,1)[0])
+    M, I_x, I_y = gotho_matrix_builder("TTTAAAATTTAAAA","TTTTTTTTT",score,4,1)
+    print(M)
+    print(I_x)
+    print(I_y)
+    a_x, a_y = gotho_traceback(M, I_x, I_y, "TTTAAAATTTAAAA", "TTTTTTTTT", score,4,1)
+    print(a_x)
+    print(a_y)
     return
 
     print("Parameters used in the algorithm:")
