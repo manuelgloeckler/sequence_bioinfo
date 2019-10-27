@@ -103,7 +103,7 @@ def gotho_matrix_builder(x_seq, y_seq, score, d, e):
                     s = score[(x_seq[j - 1], y_seq[i - 1])]
                 else:
                     s = 0
-                    # TODO throw error
+                    assert "No compatible scoring was given, score = 0"
                 M[i][j] = max(M[i - 1][j - 1] + s, I_x[i - 1][j - 1] + s, I_y[i - 1][j - 1] + s)
                 I_x[i][j] = max(M[i - 1][j] - d, I_x[i - 1][j] - e)
                 I_y[i][j] = max(M[i][j - 1] - d, I_y[i][j - 1] - e)
@@ -115,7 +115,7 @@ def gotho_matrix_builder(x_seq, y_seq, score, d, e):
 
     return M, I_x, I_y
 
-def gotho_traceback(M, I_x, I_y, x_seq, y_seq, score, d, e):
+def gotho_traceback(M, I_x, I_y, x_seq, y_seq, d, e):
     ncol = len(x_seq) + 1
     nrow = len(y_seq) + 1
     result_x = ""
@@ -124,21 +124,15 @@ def gotho_traceback(M, I_x, I_y, x_seq, y_seq, score, d, e):
     i = nrow -1
     j = ncol -1
 
+    # Pickung max end score and the corresponding matrix where it is reached.
     maxs = [(M[i][j]), (I_x[i][j]), (I_y[i][j] )]
+    score = max(maxs)
     matrix = maxs.index(max(maxs))
 
     while i > 0 and j > 0:
-
-        if isinstance(score, Score):
-            s = score.match if x_seq[j - 1] == y_seq[i - 1] else score.mismatch
-        elif isinstance(score, dict):
-            s = score[(x_seq[j - 1], y_seq[i - 1])]
-        else:
-            s = 0
-            # TODO throw error
-
+        # Dependent on the current matrix, compute the maximum values of the step before
         if matrix == 0:
-            vals = np.array([(M[i-1][j-1]) + s, (I_x[i-1][j-1] + s), (I_y[i-1][j-1] + s)])
+            vals = np.array([(M[i-1][j-1]), (I_x[i-1][j-1]), (I_y[i-1][j-1])])
             trace = list(np.where(vals == max(vals))[0])
         elif matrix == 1:
             vals = np.array([M[i-1][j] - d, I_x[i-1][j] -e, - np.inf])
@@ -147,6 +141,8 @@ def gotho_traceback(M, I_x, I_y, x_seq, y_seq, score, d, e):
             vals = np.array([M[i][j-1] - d, -np.inf, I_y[i][j-1] - e])
             trace = list(np.where(vals == max(vals))[0])
 
+        # Dependent on the trace of the maximum value and the orignin matrix, add corresponding alignment and
+        # change matrix if needed.
         if 0 in trace:
             if matrix == 1:
                 result_x += "-"
@@ -186,7 +182,7 @@ def gotho_traceback(M, I_x, I_y, x_seq, y_seq, score, d, e):
             matrix = 2
 
 
-    return result_x[::-1], result_y[::-1]
+    return score, result_x[::-1], result_y[::-1]
 
 
 
@@ -320,7 +316,8 @@ def main():
     print(M)
     print(I_x)
     print(I_y)
-    a_x, a_y = gotho_traceback(M, I_x, I_y, "TTTAAAATTTAAAA", "TTTTTTTTT", score,4,1)
+    score, a_x, a_y = gotho_traceback(M, I_x, I_y, "TTTAAAATTTAAAA", "TTTTTTTTT",4,1)
+    print(score)
     print(a_x)
     print(a_y)
     return
