@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import argparse
 import warnings
+
 import numpy as np
 
 """Basic Needleman-Wunsch"""
@@ -338,9 +339,6 @@ def main():
 
     if args.gap:
         aligned_x, aligned_y = run_nw(x_seq, y_seq, score)
-        # print("Alignment with linear cost:")
-        # print("\n".join([x_header, aligned_x, y_header, aligned_y]))
-        # print(" Best score: " + str(score.best_score))
         if args.output:
             f = open(args.output,"w+")
             f.write("Alignment with linear cost:" + "\n")
@@ -350,13 +348,14 @@ def main():
             f.write(aligned_y + "\n")
             f.write("Best Score: {}".format(score.best_score))
             f.close()
+        else:
+            print("Alignment with linear cost:")
+            print("\n".join([x_header, aligned_x, y_header, aligned_y]))
+            print(" Best score: " + str(score.best_score))
+
     else:
         M, I_x, I_y = gotho_matrix_builder(x_seq,y_seq,score,args.open,args.extend)
         score, a_x, a_y = gotho_traceback(M, I_x, I_y, x_seq, y_seq,args.open,args.extend)
-        # print("Alignment with affine cost:")
-        # print(a_x)
-        # print(a_y)
-        # print("Best score: " + str(score))
         if args.output:
             f = open(args.output,"w+")
             f.write("Alignment with affine cost:" + "\n")
@@ -366,6 +365,11 @@ def main():
             f.write(a_y + "\n")
             f.write("Best score: " + str(score))
             f.close()
+        else:
+            print("Alignment with affine cost:")
+            print(a_x)
+            print(a_y)
+            print("Best score: " + str(score))
 
     print("finished")
 
