@@ -103,7 +103,7 @@ def gotho_matrix_builder(x_seq, y_seq, score, d, e):
                     s = score[(x_seq[j - 1], y_seq[i - 1])]
                 else:
                     s = 0
-                    assert "No compatible scoring was given, score = 0"
+                    raise Exception("No compatible scoring was given, score = 0")
                 M[i][j] = max(M[i - 1][j - 1] + s, I_x[i - 1][j - 1] + s, I_y[i - 1][j - 1] + s)
                 I_x[i][j] = max(M[i - 1][j] - d, I_x[i - 1][j] - e)
                 I_y[i][j] = max(M[i][j - 1] - d, I_y[i][j - 1] - e)
@@ -244,6 +244,21 @@ def traceback_to_alignment(matT, x_seq, y_seq):
         x_aligned += x_seq[j - 1]
         j -= 1
     return x_aligned[::-1], y_aligned[::-1]
+
+def run_gotho(x_seq, y_seq, score, d, e):
+
+    # Dummy checks
+    if (d < e):
+        raise Exception("You choice d < e does not make sense, rethink your parameters")
+
+    if not isinstance(score, Score) or isinstance(score, dict):
+        raise Exception("Incompatible scoring function...")
+
+    if not isinstance(x_seq, str) and isinstance(y_seq, str):
+        raise Exception("Incompatible sequence formats")
+
+    M, I_x, I_y = gotho_matrix_builder(x_seq, y_seq, score, d, e)
+    return gotho_traceback(M, I_x, I_y, x_seq, y_seq, d, e)
 
 
 def run_nw(x_seq, y_seq, score):
