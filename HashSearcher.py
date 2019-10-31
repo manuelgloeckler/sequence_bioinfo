@@ -42,7 +42,8 @@ class HashSearcher:
             for starting_position in range(0, len(sequence), self.k):
                 k_tuple = sequence[starting_position:starting_position + self.k]
                 hash_value = self.hash_function(k_tuple)
-                hash_bucket = self.hash_table.get(hash_value, [])
+                if hash_value not in self.hash_table: self.hash_table[hash_value] = []
+                hash_bucket = self.hash_table[hash_value]
                 hash_bucket.append((sequence_index, starting_position))
 
 
@@ -54,7 +55,8 @@ class HashSearcher:
         # collect all hits from the hash table
         for starting_index, k_tuple in enumerate(k_tuples):
             hash_value = self.hash_function(k_tuple)
-            hits.extend([(seq_id, pos - starting_index, pos) for (seq_id, pos) in self.hash_table[hash_value]])
+            hash_bucket = self.hash_table.get(hash_value, [])
+            hits.extend([(seq_id, pos - starting_index, pos) for (seq_id, pos) in hash_bucket])
 
         # combine consecutive hits
         hits.sort()
@@ -64,17 +66,12 @@ class HashSearcher:
             if cur_hit and hit[0] == cur_hit[0] and hit[1] == cur_hit[1] and hit[2] == cur_hit[2] + self.k: # consecutive
                 cur_hit[-1] += self.k
             else:
-                greatest_hits.append(tuple(cur_hit))
+                if cur_hit: greatest_hits.append(tuple(cur_hit))
                 cur_hit = [*hit, self.k]
         if cur_hit: greatest_hits.append(tuple(cur_hit))
 
         return greatest_hits
                 
-
-            
-
-
-        
     
     def _get_alphabet_from_db(self):
         chars = set()
