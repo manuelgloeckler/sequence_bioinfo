@@ -5,8 +5,8 @@ logger = logging.getLogger()
 __author__ = "Yanpeng Li, Josua Stadelmaier, Finn Mier"
 
 def read_sequence(sequence_path):
-    if not sequence_path.endswith(".fasta"):
-        logger.error("Filenames must end in '.fasta' but was {}".format(sequence_path))
+    if not (sequence_path.endswith(".fasta") or sequence_path.endswith(".fna")):
+        logger.error("Filenames must end in '.fasta' or '.fna' but was {}".format(sequence_path))
         raise ValueError
     else:
         sequences = []
