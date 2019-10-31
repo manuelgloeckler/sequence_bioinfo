@@ -46,6 +46,33 @@ class HashSearcher:
                 hash_bucket.append((sequence_index, starting_position))
 
 
+    def search_sequence(self, query):
+        # create all overlapping k-tuples from the query
+        k_tuples = [query[i:i+self.k] for i in range(len(query) - self.k)]
+        hits = []
+
+        # collect all hits from the hash table
+        for starting_index, k_tuple in enumerate(k_tuples):
+            hash_value = self.hash_function(k_tuple)
+            hits.extend([(seq_id, pos - starting_index, pos) for (seq_id, pos) in self.hash_table[hash_value]])
+
+        # combine consecutive hits
+        hits.sort()
+        greatest_hits = []
+        if hits: cur_hit = [*hits[0], self.k]
+        for hit in hits:
+            if hit[0] == cur_hit[0] and hit[1] == cur_hit[1] and hit[2] == cur_hit[2] + self.k: # conescutive
+                cur_hit[-1] += self.k
+            else:
+                greatest_hits.append(tuple(cur_hit))
+                cur_hit = [*hit, self.k]
+        if hits: greatest_hits.append(tuple(cur_hit))
+
+        return greatest_hits
+                
+
+            
+
 
         
     
