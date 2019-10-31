@@ -59,14 +59,14 @@ class HashSearcher:
         # combine consecutive hits
         hits.sort()
         greatest_hits = []
-        if hits: cur_hit = [*hits[0], self.k]
+        cur_hit = None
         for hit in hits:
-            if hit[0] == cur_hit[0] and hit[1] == cur_hit[1] and hit[2] == cur_hit[2] + self.k: # conescutive
+            if cur_hit and hit[0] == cur_hit[0] and hit[1] == cur_hit[1] and hit[2] == cur_hit[2] + self.k: # consecutive
                 cur_hit[-1] += self.k
             else:
                 greatest_hits.append(tuple(cur_hit))
                 cur_hit = [*hit, self.k]
-        if hits: greatest_hits.append(tuple(cur_hit))
+        if cur_hit: greatest_hits.append(tuple(cur_hit))
 
         return greatest_hits
                 
