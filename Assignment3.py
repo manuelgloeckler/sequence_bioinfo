@@ -10,6 +10,7 @@ import logging
 from FastA import *
 import argparse
 from HashSearcher import HashSearcher
+import Alphabets
 
 logger = logging.getLogger()
 
@@ -19,6 +20,8 @@ def parse_args():
     parser.add_argument('-i', '--input', nargs = 2, type=str, required=True, help="Databasefile and query file")
     parser.add_argument('-o', '--output', nargs = 1, default=["out.out"], type=str, help="Name of the Output file. Defaults to alignment.fasta. If the file already exists an error will be thrown.")
     parser.add_argument('-l', '--loglevel', nargs = 1, default="warning", type=str, choices=['debug', 'info', 'warning', 'error', 'critical'], help="Sets logging level. Defaults to warning.")
+    parser.add_argument('-k', '--tuple_length', nargs = 1, default=5, type=int, help="Length of tuples used to find seeds.")
+    parser.add_argument('-a', '--alphabet', nargs = 1, type=str, choices=["amino", "DNA"], help="Sets the alphabet. If it is not given the alphabet will be recovered from the database.")
     parser.add_argument('-?', action="help", help="Shows this help message and exits.")
 
     args = parser.parse_args()
@@ -44,10 +47,13 @@ def main():
     print("Author: {}".format(__author__))
 
     headers, sequences = read_sequence(args.input[0])
-    hash_searcher = HashSearcher(sequences)
+    if args.alphabet == "DNA": alphabet = Alphabets.DNA
+    elif args.alphabet == "amino": alphabet = Alphabets.amino_acid
+    else: alphabet = None
+    hash_searcher = HashSearcher(sequences, alphabet, args.tuple_length[0])
 
     headers, queries = read_sequence(args.input[1])
-    print("Writing results to {}".format(args.output))
+    print("Writing results to {}".format(args.output[0]))
     with open(args.output[0], "w") as file:
         for query_index, query in enumerate(queries):
             #seq_id, pos - starting_index, pos, length

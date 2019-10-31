@@ -25,8 +25,16 @@ class HashSearcher:
     """
     def __init__(self, database, alphabet = None, k = 5):
         self.database = database
-        if alphabet is None: self._get_alphabet_from_db()
-        else: self.alphabet = alphabet
+        db_alphabet = self._get_alphabet_from_db()
+        if alphabet is None: 
+            logger.info("No alphabet was given. Recovered {} as alphabet.".format(self.alphabet))
+            alphabet = db_alphabet
+        else:
+            if not db_alphabet.issubset(alphabet):
+                logger.error("Given alphabet: {} did not correspond to alphabet of database: {}".format(alphabet, db_alphabet))
+                raise ValueError
+            else: self.alphabet = alphabet
+
         self.k = k
         self.hash_function = create_hash(self.alphabet)
         self.build_hashtable()
@@ -48,6 +56,13 @@ class HashSearcher:
 
 
     def search_sequence(self, query):
+        #sanity check given query
+        query_alphabet = set()
+        query_alphabet.update(query)
+        if not query_alphabet.issubset(self.alphabet):
+            logger.error("Query alphabet: {} did not correspond to alphabet of database: {}".format(query_alphabet, self.alphabet))
+            raise ValueError
+
         # create all overlapping k-tuples from the query
         k_tuples = [query[i:i+self.k] for i in range(len(query) - self.k)]
         hits = []
@@ -78,7 +93,6 @@ class HashSearcher:
         for sequence in self.database:
             chars.update(sequence)
         self.alphabet = list(chars)
-        logger.info("No alphabet was given. Recovered {} as alphabet.".format(self.alphabet))
 
 
 
