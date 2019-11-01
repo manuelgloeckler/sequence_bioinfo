@@ -47,8 +47,8 @@ def main():
     print("Author: {}".format(__author__))
 
     headers, sequences = read_sequence(args.input[0])
-    if args.alphabet == "DNA": alphabet = Alphabets.DNA
-    elif args.alphabet == "amino": alphabet = Alphabets.amino_acid
+    if args.alphabet and args.alphabet[0] == "DNA": alphabet = Alphabets.DNA
+    elif args.alphabet and args.alphabet[0] == "amino": alphabet = Alphabets.amino_acid
     else: alphabet = None
     hash_searcher = HashSearcher(sequences, alphabet, args.tuple_length[0])
 
@@ -56,9 +56,10 @@ def main():
     print("Writing results to {}".format(args.output[0]))
     with open(args.output[0], "w") as file:
         for query_index, query in enumerate(queries):
-            #seq_id, pos - starting_index, pos, length
+        #seq_id, pos - starting_index, pos, length
             for seq_id, offset, pos, length in hash_searcher.search_sequence(query):
                 print("{}\t{}\t{}\t{}\t{}".format(query_index, seq_id, -(offset - pos), pos, length), file = file)
+        
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ class HashSearcher:
             logger.info("No alphabet was given. Recovered {} as alphabet.".format(self.alphabet))
             alphabet = db_alphabet
         else:
-            if not db_alphabet.issubset(alphabet):
+            if not set(alphabet).issubset(db_alphabet):
                 logger.error("Given alphabet: {} did not correspond to alphabet of database: {}".format(alphabet, db_alphabet))
                 raise ValueError
             else: self.alphabet = alphabet
@@ -59,7 +59,7 @@ class HashSearcher:
         #sanity check given query
         query_alphabet = set()
         query_alphabet.update(query)
-        if not query_alphabet.issubset(self.alphabet):
+        if not set(self.alphabet).issubset(query_alphabet):
             logger.error("Query alphabet: {} did not correspond to alphabet of database: {}".format(query_alphabet, self.alphabet))
             raise ValueError
 
@@ -78,7 +78,7 @@ class HashSearcher:
         greatest_hits = []
         cur_hit = None
         for hit in hits:
-            if cur_hit and hit[0] == cur_hit[0] and hit[1] == cur_hit[1] and hit[2] == cur_hit[2] + self.k: # consecutive
+            if cur_hit and hit[0] == cur_hit[0] and hit[1] == cur_hit[1] and hit[2] == cur_hit[2] + cur_hit[-1]: # consecutive
                 cur_hit[-1] += self.k
             else:
                 if cur_hit: greatest_hits.append(tuple(cur_hit))
@@ -92,7 +92,7 @@ class HashSearcher:
         chars = set()
         for sequence in self.database:
             chars.update(sequence)
-        self.alphabet = list(chars)
+        return chars
 
 
 
