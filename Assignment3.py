@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument('-l', '--loglevel', nargs = 1, default="warning", type=str, choices=['debug', 'info', 'warning', 'error', 'critical'], help="Sets logging level. Defaults to warning.")
     parser.add_argument('-k', '--tuple_length', nargs = 1, default=5, type=int, help="Length of tuples used to find seeds.")
     parser.add_argument('-a', '--alphabet', nargs = 1, type=str, choices=["amino", "DNA"], help="Sets the alphabet. If it is not given the alphabet will be recovered from the database.")
+    parser.add_argument('-n', '--near_perfect',  action="store_true", help="When enabled will also search for hits with one mismatch.")
     parser.add_argument('-?', action="help", help="Shows this help message and exits.")
 
     args = parser.parse_args()
@@ -57,7 +58,7 @@ def main():
     with open(args.output[0], "w") as file:
         for query_index, query in enumerate(queries):
         #seq_id, pos - starting_index, pos, length
-            for seq_id, offset, pos, length in hash_searcher.search_sequence(query):
+            for seq_id, offset, pos, length in hash_searcher.search_sequence(query, args.near_perfect):
                 print("{}\t{}\t{}\t{}\t{}".format(query_index, seq_id, -(offset - pos), pos, length), file = file)
         
 

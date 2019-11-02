@@ -36,6 +36,16 @@ class HashSearcher:
         k = len(sequence) - 1
         return sum([(kappa**(k - i)) * self.mapping[c] for i,c in enumerate(sequence)])
 
+    def near_hashes(self, hash_value, sequence):
+        near_hashes = []
+        kappa = len(self.alphabet)
+        k = len(sequence) - 1
+        for i in range(len(sequence)):
+            base_hash = hash_value - (self.mapping[sequence[i]] * (kappa**(k-i)))
+            near_hashes.extend([base_hash + (j * (kappa**(k-i))) for j in range(kappa)])
+        near_hashes = set(near_hashes); near_hashes = list(near_hashes) # remove duplicates
+        return near_hashes
+
 
     def build_hashtable(self):
         """Function to build a hashtable from this instances database.
@@ -67,8 +77,14 @@ class HashSearcher:
         # collect all hits from the hash table
         for starting_index, k_tuple in enumerate(k_tuples):
             hash_value = self.hash_function(k_tuple)
-            hash_bucket = self.hash_table.get(hash_value, [])
-            hits.extend([(seq_id, pos - starting_index, pos) for (seq_id, pos) in hash_bucket])
+            if allow_mismatch:
+                near_hashes = self.near_hashes(hash_value, k_tuple)
+                for hash_value in near_hashes:
+                    hash_bucket = self.hash_table.get(hash_value, [])
+                    hits.extend([(seq_id, pos - starting_index, pos) for (seq_id, pos) in hash_bucket])
+            else:
+                hash_bucket = self.hash_table.get(hash_value, [])
+                hits.extend([(seq_id, pos - starting_index, pos) for (seq_id, pos) in hash_bucket])
 
         # combine consecutive hits
         hits.sort()
