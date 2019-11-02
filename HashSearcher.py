@@ -5,6 +5,7 @@ import numpy as np
 
 logger = logging.getLogger()
 
+__author__ = "Patrick Schirm, Manuel Glöckler, Finn Mier"
 
 
 class HashSearcher:

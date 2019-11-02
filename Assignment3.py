@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-"""Basic Needleman-Wunsch"""
+"""Basic hash table supported aligner"""
 
-__author__ = "Yanpeng Li, Finn Mier"
+__author__ = "Patrick Schirm, Manuel Glöckler, Finn Mier"
 
 
 
@@ -44,7 +44,6 @@ def main():
     logging_setup(args.loglevel[0])
 
     # print some information about the script
-    print("Program: global aligner with affine gap cost")
     print("Author: {}".format(__author__))
 
     headers, sequences = read_sequence(args.input[0])
