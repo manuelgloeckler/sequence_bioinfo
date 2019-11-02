@@ -5,14 +5,6 @@ import numpy as np
 
 logger = logging.getLogger()
 
-def create_hash(alphabet):
-    mapping = {a : i for i,a in enumerate(alphabet)}
-    kappa = len(alphabet)
-    def hash_function(seq):
-        k = len(seq) - 1
-        return sum([(kappa**(k - i)) * mapping[c] for i,c in enumerate(seq)])
-    return hash_function
-
 
 
 class HashSearcher:
@@ -35,10 +27,15 @@ class HashSearcher:
                 raise ValueError
             else: self.alphabet = alphabet
 
+        self.mapping = {a : i for i,a in enumerate(self.alphabet)}
         self.k = k
-        self.hash_function = create_hash(self.alphabet)
         self.build_hashtable()
-        
+
+    def hash_function(self, sequence): 
+        kappa = len(self.alphabet)
+        k = len(sequence) - 1
+        return sum([(kappa**(k - i)) * self.mapping[c] for i,c in enumerate(sequence)])
+
 
     def build_hashtable(self):
         """Function to build a hashtable from this instances database.
@@ -55,7 +52,7 @@ class HashSearcher:
                 hash_bucket.append((sequence_index, starting_position))
 
 
-    def search_sequence(self, query):
+    def search_sequence(self, query, allow_mismatch = False):
         #sanity check given query
         query_alphabet = set()
         query_alphabet.update(query)
@@ -87,7 +84,7 @@ class HashSearcher:
 
         return greatest_hits
                 
-    
+
     def _get_alphabet_from_db(self):
         chars = set()
         for sequence in self.database:
