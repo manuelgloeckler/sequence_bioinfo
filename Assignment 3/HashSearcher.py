@@ -20,8 +20,8 @@ class HashSearcher:
         self.database = database
         db_alphabet = self._get_alphabet_from_db()
         if alphabet is None: 
+            self.alphabet = db_alphabet
             logger.info("No alphabet was given. Recovered {} as alphabet.".format(self.alphabet))
-            alphabet = db_alphabet
         else:
             if not set(alphabet).issubset(db_alphabet):
                 logger.error("Given alphabet: {} did not correspond to alphabet of database: {}".format(alphabet, db_alphabet))
@@ -109,8 +109,3 @@ class HashSearcher:
         return chars
 
 
-
-
-if __name__ == "__main__":
-    hash_function = create_hash("ACGT")
-    print(hash_function("AGCA"))
