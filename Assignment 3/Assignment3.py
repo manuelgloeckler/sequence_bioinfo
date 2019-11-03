@@ -4,13 +4,11 @@
 
 __author__ = "Patrick Schirm, Manuel Glöckler, Finn Mier"
 
-
-
-import logging
-from FastA import *
 import argparse
-from HashSearcher import HashSearcher
+
 import Alphabets
+from FastA import *
+from HashSearcher import HashSearcher
 
 logger = logging.getLogger()
 
@@ -18,7 +16,7 @@ logger = logging.getLogger()
 def parse_args():
     parser = argparse.ArgumentParser(description="Basic aligner using hashing")
     parser.add_argument('-i', '--input', nargs = 2, type=str, required=True, help="Databasefile and query file")
-    parser.add_argument('-o', '--output', nargs = 1, default=["out.out"], type=str, help="Name of the Output file. Defaults to alignment.fasta. If the file already exists an error will be thrown.")
+    parser.add_argument('-o', '--output', nargs = 1, default=["out.tsv"], type=str, help="Name of the Output file. Defaults to alignment.fasta. If the file already exists an error will be thrown.")
     parser.add_argument('-l', '--loglevel', nargs = 1, default="warning", type=str, choices=['debug', 'info', 'warning', 'error', 'critical'], help="Sets logging level. Defaults to warning.")
     parser.add_argument('-k', '--tuple_length', nargs = 1, default=5, type=int, help="Length of tuples used to find seeds.")
     parser.add_argument('-a', '--alphabet', nargs = 1, type=str, choices=["amino", "DNA"], help="Sets the alphabet. If it is not given the alphabet will be recovered from the database.")
