@@ -1,0 +1,9 @@
+./blat Hpylori.fasta reads.fasta result_tile8.blast8 -maxIntron=50 -out=blast8 -tileSize=8
+./blat Hpylori.fasta reads.fasta result_tile11.blast8 -maxIntron=50 -out=blast8 -tileSize=11
+./blat Hpylori.fasta reads.fasta result_tile18.blast8 -maxIntron=50 -out=blast8 -tileSize=18
+
+column meanings:
+#query, subject, %identical, alignment length, mismatches, gap openings, query start, query end, subject start, subject end, E value, bit score
+
+tileSize is the size of a match that triggers an alignment, i.e. the k of the k-mers used for the seeding.
+
