@@ -17,6 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Analysis tool for blat output files")
     parser.add_argument('-b', '--blat', type=str, required=True, help="blat output file")
     parser.add_argument('-c', '--criterion', type=str, default=None, choices=['e_value', 'length', 'bit_score', 'identical'], help="how to evaluate the 'best' hit.")
+    parser.add_argument('-r', '--read_length', type=int, default=None, help="Read length, if not specified the longest BLAST alignment is taken")
     parser.add_argument('-t', '--true_positive', type=str, required=True, help="true positive file")
     parser.add_argument('-d', '--data_base', type=str, help="fasta database file. Either this or data_base_length is required to compute the opposite alignments")
     parser.add_argument('-n', '--data_base_length', type=str, help="database length. Either this or data_base is required to compute the opposite alignments")
@@ -44,7 +45,6 @@ def main():
 
     # print some information about the script
     print("Author: {}".format(__author__))
-
     true_positives = read_TP(args.true_positive)
 
 
@@ -57,7 +57,7 @@ def main():
         logger.warning("No data_base or data_base_length was passed. Thus alignments in negative directions can not be checked.")
         blast_reader = Blast8Reader()
 
-#TODO: First Assignment task doesn't ask for perfect ones but for any!
+
     if args.criterion is None:
         blast8_reads = blast_reader.read_blast8(args.blat)
     if args.criterion == "e_value":
@@ -69,7 +69,23 @@ def main():
     elif args.criterion == "bit_score":
         blast8_reads = blast_reader.read_probable_blast8(args.blat, Blast8Reader.bit_score)
 
-    found_positives = 0
+    # specifies read length
+    if args.read_length == None:
+        vals = list()
+        for x in list(blast_reader.reads.values()):
+            vals.append(int(x[0][5]))
+        read_length = max(vals)
+    else:
+        read_length = args.read_length
+
+    # get uniquified set of queries and alignt queries
+    all_queries = set(map(lambda x: x[0], true_positives.keys()))
+    alignt_queries = set(map(lambda x: x[0], blast_reader.reads.keys()))
+    print("Alignt queries: {}/{} with percentage: {}.".format(len(alignt_queries), len(all_queries), len(alignt_queries)/len(all_queries)))
+
+
+    found_positives = 0 # real true_negatives
+    false_negatives = 0
     false_positives = 0
     found_keys = set()
     for tp_key in true_positives:
@@ -82,13 +98,19 @@ def main():
                         found_positives += 1
                         found = True
                         break
-                if found == False: false_positives += 1
+                if found == False:
+                    false_negatives += 1
+                    false_positives += 1
             else:
                 if blast8_reads[tp_key][10] == true_positives[tp_key][0] and blast8_reads[tp_key][11] == true_positives[tp_key][1]:
                     found_keys.add(tp_key)
                     found_positives += 1
                 else:
+                    false_negatives += 1
                     false_positives += 1
+        else:
+            false_negatives += 1
+
 
 
     print("Found positives: {}/{} with percentage: {}.".format(found_positives, len(true_positives), found_positives/len(true_positives)))
@@ -104,15 +126,19 @@ def main():
     print("Uniquely mapped reads: {}, of which {} were true positives.".format(uniquely_mapped, correctly_uniquely_mapped))
 
     # number of true local alignments found relative to the total number of alignments reported
-    sensitivity = found_positives / len(blast8_reads)
+    sensitivity = found_positives / (len(true_positives))
     
     # %of true local alignment which are correctly identified
-    specificity = found_positives / len(true_positives)
+    #specificity = found_positives / len(true_positives)
 
-    true_negatives = found_positives * (len(true_positives) - 1) #maybe theres a better way to define the true negatives
+    #true_negatives = found_positives * (len(true_positives) - 1) maybe theres a better way to define the true negatives
+    negatives = sum([len(sequences[i]) for i in range(len(sequences))]) - read_length - 1 - len(true_positives)
+    true_negatives = negatives - false_negatives
+
     # TN / (TN + FP)
     other_specificity = true_negatives / (true_negatives + false_positives)
-    print("Sensitivity: {}, Specificity (by Definition): {}, Specificity (by TN): {}.".format(sensitivity, specificity, other_specificity))
+
+    print("Sensitivity: {}, Specificity: {}.".format(sensitivity, other_specificity))
 
 
 if __name__ == "__main__":
