@@ -91,6 +91,14 @@ def kimmura_dist(str1, str2):
     hamm_dist = hamming_dist(str1, str2)
     return -np.log(1-hamm_dist - hamm_dist**2/5)
 
+def distance_matrix(strs):
+    n = len(strs)
+    dist_matrix = np.zeros((n,n))
+    for i in range(n):
+        for j in range(n):
+            dist_matrix[i,j] = kimmura_dist(run_nw(strs[i], strs[j])[1:])
+    return dist_matrix
+
 def main():
     blossumMatrix = parse_score('./BLOSUM62.txt')
     headers, sequences = read_sequence('./BB11007_unaligned.fasta')
