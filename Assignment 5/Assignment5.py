@@ -60,8 +60,18 @@ def distance_matrix(strs, aligner):
     return dist_matrix
 
 def pair_guided_alignment(align1:list, align2:list, aligner):
-    seq1 = np.random.choice(align1)
-    seq2 = np.random.choice(align2)
+    i1 = np.random.choice(range(len(align1)))
+    seq1 = align1[i1]
+
+    i2 =  np.random.choice(range(len(align2)))
+    seq2 = align2[i2]
+
+    oldgaps1 =  np.where(np.array(list(seq1)) == "-")[0]
+    oldgaps2 = np.where(np.array(list(seq2)) == "-")[0]
+
+    seq1 = seq1.replace("-", "*")
+    seq2 = seq2.replace("-", "*")
+
     aligner.sequences = [seq1, seq2]
 
     new_alignment = aligner.align()
@@ -72,20 +82,31 @@ def pair_guided_alignment(align1:list, align2:list, aligner):
     newgaps1 =  np.where(np.array(list(new_seq1)) == "-")[0]
     newgaps2 = np.where(np.array(list(new_seq2)) == "-")[0]
 
-    oldgaps1 =  np.where(np.array(list(seq1)) == "-")[0]
-    oldgaps2 = np.where(np.array(list(seq2)) == "-")[0]
+    new_seq1 = new_seq1.replace("*", "-")
+    new_seq2 = new_seq2.replace("*", "-")
 
-    newgaps1 = np.delete(newgaps1, np.where(newgaps1 == oldgaps1)[0])
-    newgaps2 = np.delete(newgaps2, np.where(newgaps2 == oldgaps2)[0])
-
+    for i in oldgaps1:
+        new_seq1 = new_seq1[:i] + "-" + new_seq1[i+1:]
+    for i in oldgaps2:
+        new_seq2 = new_seq2[:i] + "-" + new_seq2[i+1:]
 
     for i in range(len(align1)):
+        if i == i1:
+            align1[i] = new_seq1
+            continue
         for col in newgaps1:
-            align1[i] = align1[i][:col] + "-" + align1[i][col:]
+            if align1[i] != seq1:
+                align1[i] = align1[i][:col] + "-" + align1[i][col:]
+
 
     for i in range(len(align2)):
+        if i == i2:
+            align1[i] = new_seq2
+            continue
         for col in newgaps2:
-            align2[i] = align2[i][:col] + "-" + align2[i][col:]
+            if align2[i] != seq2:
+                align2[i] = align2[i][:col] + "-" + align2[i][col:]
+
 
     return align1, align2
 
@@ -105,23 +126,20 @@ def main():
     aligner = GlobalSequenceLinearGapAligner(MatrixLinearScoring(alphabet, score_matrix, 4))
 
     headers, sequences = FastA.read_sequence('./BB11007_unaligned.fasta')
-    headers_idx = [str(i) for i in range(len(sequences))]
+    headers = [str(i) for i in range(len(sequences))]
 
     data_dm = distance_matrix(sequences, aligner)
-    dm = DistanceMatrix(data_dm, headers_idx)
+    dm = DistanceMatrix(data_dm, headers)
     tree = nj(dm).root_at_midpoint()
-    print(tree.ascii_art())
+
     joining_list =  get_joining_list(tree)
-    id_sequence_dict = dict(zip(headers_idx,sequences))
-    print(joining_list)
+    id_sequence_dict = dict(zip(headers,sequences))
     qu = []
     i = 0
-    print(id_sequence_dict)
     while i < len(joining_list) -1:
 
         current = joining_list[i]
         next_seq = joining_list[i+1]
-        print(qu)
         if current in id_sequence_dict.keys() and next_seq in id_sequence_dict.keys():
             seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next_seq]], aligner)
             seqs1.extend(seqs2)
@@ -153,10 +171,12 @@ def main():
             i += 2
         else:
             i += 1
-        print(qu)
-    FastA.write_comparison("test.fasta", headers, qu[0]) #TODO: sort headers correctly
 
+    for seq in qu[0]:
+        print(len(seq))
 
+    for seq in qu[0]:
+        print(seq)
 
 
 
