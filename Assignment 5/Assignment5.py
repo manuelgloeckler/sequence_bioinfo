@@ -105,14 +105,14 @@ def main():
     aligner = GlobalSequenceLinearGapAligner(MatrixLinearScoring(alphabet, score_matrix, 4))
 
     headers, sequences = FastA.read_sequence('./BB11007_unaligned.fasta')
-    headers = [str(i) for i in range(len(sequences))]
+    headers_idx = [str(i) for i in range(len(sequences))]
 
     data_dm = distance_matrix(sequences, aligner)
-    dm = DistanceMatrix(data_dm, headers)
+    dm = DistanceMatrix(data_dm, headers_idx)
     tree = nj(dm).root_at_midpoint()
     print(tree.ascii_art())
     joining_list =  get_joining_list(tree)
-    id_sequence_dict = dict(zip(headers,sequences))
+    id_sequence_dict = dict(zip(headers_idx,sequences))
     print(joining_list)
     qu = []
     i = 0
@@ -154,6 +154,8 @@ def main():
         else:
             i += 1
         print(qu)
+    FastA.write_comparison("test.fasta", headers, qu[0]) #TODO: sort headers correctly
+
 
 
 
