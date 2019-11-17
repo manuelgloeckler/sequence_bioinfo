@@ -1,18 +1,23 @@
+#!/usr/bin/python
+
+__author__ = "Patrick Schirm, Manuel Glöckler, Finn Mier"
+
 import numpy as np
-from Bio import pairwise2
+import logging
+import argparse
+import re
+
 from skbio import DistanceMatrix
 from skbio.tree import nj
-import logging
+
+import FastA
 from MatrixReader import *
 from GlobalSequenceLinearGap import GlobalSequenceLinearGapAligner
 from SAScoringSystem import *
-import re
-import FastA
+
 
 logger = logging.getLogger()
 
-FORMAT = '%(levelname)s: %(filename)s %(lineno)d, %(funcName)s: %(message)s'
-logging.basicConfig(level = logging.INFO, format = FORMAT)
 
 def find_new_gaps(old_sequence, new_sequence):
     old_index = 0
@@ -23,27 +28,6 @@ def find_new_gaps(old_sequence, new_sequence):
         else:
             gap_indices.append(new_index)
     return gap_indices
-
-
-
-
-def parse_score(path):
-    file = open(path, 'r')
-    score_dict = {}
-    alphabet = []
-    i = 0
-    for x in file:
-        if i == 0:
-            alphabet = x.split()
-            alphabet = [x.strip() for x in alphabet]
-        else:
-            row = x.split()
-            subst = row[0]
-            del row[0]
-            for j in range(len(row)):
-                score_dict[(alphabet[j], subst)] = int(row[j].strip())
-        i+=1
-    return score_dict
 
 def hamming_dist(str1, str2):
     assert (len(str1) == len(str2))
@@ -75,25 +59,19 @@ def distance_matrix(strs, aligner):
             dist_matrix[j,i] = abs(kimmura_dist(seq1, seq2))
 
     return dist_matrix
-icq = []
+
 def pair_guided_alignment(align1:list, align2:list, aligner):
-    global icq
     seq1 = np.random.choice(align1)
     seq2 = np.random.choice(align2)
     aligner.sequences = [seq1, seq2]
 
     new_alignment = aligner.align()
-    icq.extend(new_alignment)
     
     new_seq1 = new_alignment[0]
     new_seq2 = new_alignment[1]
-    logger.info("old: {},\nnew: {}".format(seq1, new_seq1))
 
     newgaps1 = find_new_gaps(seq1, new_seq1)
     newgaps2 = find_new_gaps(seq2, new_seq2)
-
-    logger.info("gaps1: {},\ngaps2: {}".format(newgaps1, newgaps2))
-
 
     for i in range(len(align1)):
         for col in newgaps1:
@@ -114,12 +92,39 @@ def get_joining_list(tree):
     node_names.reverse()
     return node_names
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Basic reimplementation of ClustalW, a MSA tool.")
+    parser.add_argument('-i', '--input', type=str, required=True, help="Fasta file containing the sequences which are to be aligned.")
+    parser.add_argument('-s', '--scoring', type=str, required=True, help="Scoring matrix")
+    parser.add_argument('-o', '--output', default="MSA_result.fasta", type=str, help="Name of the Output file. Defaults to MSA_result.fasta")
+    parser.add_argument('-l', '--loglevel', default="warning", type=str, choices=['debug', 'info', 'warning', 'error', 'critical'], help="Sets logging level. Defaults to warning.")
+    parser.add_argument('-c', '--compare',  action="store_true", help="When enabled will not adhere to the 80 char per line standard in the fasta file so the sequences can be compared easier.")
+    parser.add_argument('-?', action="help", help="Shows this help message and exits.")
 
+    args = parser.parse_args()
+    return args
+
+
+def logging_setup(loglevel : str): 
+    # setting logging stuff
+    loglevel = loglevel.lower()
+    logging_map = {"debug" : logging.DEBUG, "info" : logging.INFO, "warning" : logging.WARNING, "error" : logging.ERROR, "critical" : logging.CRITICAL}
+    level = logging_map.get(loglevel, logging.INFO)
+    FORMAT = '%(levelname)s: %(filename)s %(lineno)d, %(funcName)s: %(message)s'
+    logging.basicConfig(level = level, format = FORMAT)
+
+
+# run with python3 Assignment5.py -i BB11007_unaligned.fasta -s blosum62matrix.txt
 def main():
-    alphabet, score_matrix = read_scoring_matrix("blosum62matrix.txt", re.compile("\s+"))
+    args = parse_args()
+    logging_setup(args.loglevel)
+    print("Author: {}".format(__author__))
+
+
+    alphabet, score_matrix = read_scoring_matrix(args.scoring, re.compile("\s+"))
     aligner = GlobalSequenceLinearGapAligner(MatrixLinearScoring(alphabet, score_matrix, 4))
 
-    headers, sequences = FastA.read_sequence('./BB11007_unaligned.fasta')
+    headers, sequences = FastA.read_sequence(args.input)
     headers_idx = [str(i) for i in range(len(sequences))]
 
     data_dm = distance_matrix(sequences, aligner)
@@ -164,19 +169,12 @@ def main():
             i += 2
         else:
             i += 1
-    FastA.write_comparison("test.fasta", headers, qu[0]) #TODO: sort headers correctly
-    FastA.write_comparison("pairwise_alignments.fasta", ["alignment {}".format(i) for i in range(len(icq))], icq) #TODO: sort headers correctly
 
-
-
-
-
-
-
-
-
-# print(pair_guided_alignment(subal1, subal2, blossumMatrix))
-
+    print("Writing output to : {}".format(args.output))
+    if args.compare:
+        FastA.write_comparison(args.output, headers, qu[0]) #TODO: sort headers correctly
+    else:
+        FastA.write_sequences(args.output, headers, qu[0]) #TODO: sort headers correctly
 
 
 if __name__ == "__main__":
