@@ -7,6 +7,7 @@ from MatrixReader import *
 from GlobalSequenceLinearGap import GlobalSequenceLinearGapAligner
 from SAScoringSystem import *
 import re
+import FastA
 
 
 
@@ -48,7 +49,7 @@ def distance_matrix(strs, aligner):
     n = len(strs)
     dist_matrix = np.zeros((n,n))
     for i in range(n):
-        for j in range(i, n):
+        for j in range(i,n):
             aligner.sequences = [strs[i], strs[j]]
             alignment = aligner.align()
             seq1 = alignment[0]
@@ -102,35 +103,25 @@ def get_joining_list(tree):
 def main():
     alphabet, score_matrix = read_scoring_matrix("blosum62matrix.txt", re.compile("\s+"))
     aligner = GlobalSequenceLinearGapAligner(MatrixLinearScoring(alphabet, score_matrix, 4))
-    raw1 = "AGGAAAAA"
-    raw2 = "GTTTGGGG"
-    aligner.sequences.append(raw1)
-    aligner.sequences.append(raw2)
-    alignment = aligner.align()
-    #headers, sequences = read_sequence('./BB11007_unaligned.fasta')
-    raw1 = "AGGACCCC"
-    raw2 = "GGACCCC"
-    raw3 = "AAAAWWWW"
-    raw4 = "CCACW"
-    raw5 = "GAGAW"
-    raw6 = "GTACW"
-    raw7 = "GTWTT"
-    raw8 = "GTWTG"
-    data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8], aligner)
-    print(data_dm)
-    dm = DistanceMatrix(data_dm, ["blaa","b","c","d","ganzlangeid","f",'was','wer'])
+
+    headers, sequences = FastA.read_sequence('./BB11007_unaligned.fasta')
+    headers = [str(i) for i in range(len(sequences))]
+
+    data_dm = distance_matrix(sequences, aligner)
+    dm = DistanceMatrix(data_dm, headers)
     tree = nj(dm).root_at_midpoint()
     print(tree.ascii_art())
     joining_list =  get_joining_list(tree)
-    id_sequence_dict = dict(zip(["blaa","b","c","d","ganzlangeid","f",'was','wer'],[raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8]))
+    id_sequence_dict = dict(zip(headers,sequences))
     print(joining_list)
     qu = []
     i = 0
+    print(id_sequence_dict)
     while i < len(joining_list) -1:
 
         current = joining_list[i]
         next_seq = joining_list[i+1]
-
+        print(qu)
         if current in id_sequence_dict.keys() and next_seq in id_sequence_dict.keys():
             seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next_seq]], aligner)
             seqs1.extend(seqs2)
