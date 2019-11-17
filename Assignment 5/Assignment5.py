@@ -19,6 +19,15 @@ def parse_score(path):
         i+=1
     return score_dict
 
+def _tracking_guide(diag, top, left):
+    winner = max(diag, top, left)
+    # diag as 0, top 1, left 2
+    if winner == diag:
+        return winner, 0
+    elif winner == top:
+        return winner, 1
+    elif winner == left:
+        return winner, 2
 
 def matrix_builder(x_seq, y_seq, score):
     ncol = len(x_seq) + 1
