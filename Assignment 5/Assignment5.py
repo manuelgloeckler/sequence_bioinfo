@@ -102,20 +102,20 @@ def get_joining_list(tree):
 def main():
     alphabet, score_matrix = read_scoring_matrix("blosum62matrix.txt", re.compile("\s+"))
     aligner = GlobalSequenceLinearGapAligner(MatrixLinearScoring(alphabet, score_matrix, 4))
-    raw1 = "AGGA"
-    raw2 = "GTTT"
+    raw1 = "AGGAAAAA"
+    raw2 = "GTTTGGGG"
     aligner.sequences.append(raw1)
     aligner.sequences.append(raw2)
     alignment = aligner.align()
     #headers, sequences = read_sequence('./BB11007_unaligned.fasta')
-    raw1 = "AGGA"
-    raw2 = "GGAC"
-    raw3 = "AAAA"
-    raw4 = "CCAC"
-    raw5 = "GAGA"
-    raw6 = "GTAC"
-    raw7 = "GTTT"
-    raw8 = "GTTG"
+    raw1 = "AGGACCCC"
+    raw2 = "GGACCCC"
+    raw3 = "AAAAWWWW"
+    raw4 = "CCACW"
+    raw5 = "GAGAW"
+    raw6 = "GTACW"
+    raw7 = "GTWTT"
+    raw8 = "GTWTG"
     data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8], aligner)
     print(data_dm)
     dm = DistanceMatrix(data_dm, ["blaa","b","c","d","ganzlangeid","f",'was','wer'])
