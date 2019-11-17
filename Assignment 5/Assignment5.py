@@ -2,6 +2,13 @@ import numpy as np
 from Bio import pairwise2
 from skbio import DistanceMatrix
 from skbio.tree import nj
+import logging
+from MatrixReader import *
+from GlobalSequenceLinearGap import GlobalSequenceLinearGapAligner
+from SAScoringSystem import *
+import re
+
+
 
 def parse_score(path):
     file = open(path, 'r')
@@ -22,7 +29,7 @@ def parse_score(path):
     return score_dict
 
 def hamming_dist(str1, str2):
-    #assert (len(str1) != len(str2))
+    assert (len(str1) == len(str2))
     score = 0
     for i in range(len(str1)):
         if str1[i] != str2[i] and (str1[i] != "-" or str1[i] != "-"):
@@ -31,23 +38,35 @@ def hamming_dist(str1, str2):
 
 def kimmura_dist(str1, str2):
     hamm_dist = hamming_dist(str1, str2)
-    return -np.log(1-hamm_dist - hamm_dist**2/5)
+    exp_val = 1-hamm_dist - ((hamm_dist**2)/5)
+    print(str1, str2, exp_val)
+    if exp_val > 0:
+        return -np.log(exp_val)
+    else:
+        return 1e10
 
-def distance_matrix(strs, score):
+def distance_matrix(strs, aligner):
     n = len(strs)
     dist_matrix = np.zeros((n,n))
     for i in range(n):
-        for j in range(n):
-            alignment = pairwise2.align.globaldx(strs[i], strs[j], score)
-            seq1 = alignment[0][0]
-            seq2 = alignment[0][1]
+        for j in range(i, n):
+            aligner.sequences = [strs[i], strs[j]]
+            alignment = aligner.align()
+            seq1 = alignment[0]
+            seq2 = alignment[1]
             dist_matrix[i,j] = abs(kimmura_dist(seq1, seq2))
+            dist_matrix[j,i] = abs(kimmura_dist(seq1, seq2))
+    print(dist_matrix == dist_matrix.T)
     return dist_matrix
 
-def pair_guided_alignment(align1:list, align2:list, score):
+def pair_guided_alignment(align1:list, align2:list, aligner):
     seq1 = np.random.choice(align1)
     seq2 = np.random.choice(align2)
-    new_alignment = pairwise2.align.globaldx(seq1, seq2, score)[0]
+    print(align2, align1)
+    aligner.sequences = [seq1, seq2]
+    print(aligner.sequences)
+    new_alignment = aligner.align()
+    
     new_seq1 = new_alignment[0]
     new_seq2 = new_alignment[1]
 
@@ -83,7 +102,13 @@ def get_joining_list(tree):
 
 
 def main():
-    blossumMatrix = parse_score('./blosum62matrix.txt')
+    alphabet, score_matrix = read_scoring_matrix("blosum62matrix.txt", re.compile("\s+"))
+    aligner = GlobalSequenceLinearGapAligner(MatrixLinearScoring(alphabet, score_matrix, 4))
+    raw1 = "AGGA"
+    raw2 = "GTTT"
+    aligner.sequences.append(raw1)
+    aligner.sequences.append(raw2)
+    alignment = aligner.align()
     #headers, sequences = read_sequence('./BB11007_unaligned.fasta')
     raw1 = "AGGA"
     raw2 = "GGAC"
@@ -93,8 +118,9 @@ def main():
     raw6 = "GTAC"
     raw7 = "GTTT"
     raw8 = "GTTG"
-    data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8], blossumMatrix)
-    dm = DistanceMatrix(list(data_dm), ["blaa","b","c","d","ganzlangeid","f",'was','wer'])
+    data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8], aligner)
+    print(data_dm)
+    dm = DistanceMatrix(data_dm, ["blaa","b","c","d","ganzlangeid","f",'was','wer'])
     tree = nj(dm).root_at_midpoint()
     print(tree.ascii_art())
     joining_list =  get_joining_list(tree)
@@ -105,30 +131,28 @@ def main():
     while i < len(joining_list) -1:
         print(i)
         current = joining_list[i]
-        next = joining_list[i+1]
-        print(current)
-        print(next)
+        next_seq = joining_list[i+1]
 
-        if current in id_sequence_dict.keys() and next in id_sequence_dict.keys():
-            seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next]], blossumMatrix)
+        if current in id_sequence_dict.keys() and next_seq in id_sequence_dict.keys():
+            seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next_seq]], aligner)
             seqs1.extend(seqs2)
             qu.append(seqs1)
             print("aaaaaaaaaaaaaaa")
             i += 2
 
-        if current == None and next in id_sequence_dict.keys():
+        if current == None and next_seq in id_sequence_dict.keys():
             prof1 = qu[0]
             del qu[0]
-            seqs1, seqs2 = pair_guided_alignment(prof1, [id_sequence_dict], blossumMatrix)
+            seqs1, seqs2 = pair_guided_alignment(prof1, [id_sequence_dict], aligner)
             seqs1.extend(seqs2)
             qu.append(seqs1)
             i += 2
-        if current == None and next == None:
+        if current == None and next_seq == None:
             prof1 = qu[0]
             del qu[0]
             prof2 = qu[0]
             del qu[0]
-            seqs1, seqs2 = pair_guided_alignment(prof1, prof2, blossumMatrix)
+            seqs1, seqs2 = pair_guided_alignment(prof1, prof2, aligner)
             seqs1.extend(seqs2)
             qu.append(seqs1)
             i += 2
