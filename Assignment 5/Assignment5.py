@@ -72,6 +72,15 @@ def pair_guided_alignment(align1:list, align2:list, score):
     return align1, align2
 
 
+def get_joining_list(tree):
+    node_names = []
+    for node in tree.levelorder():
+        node_names.append(node.name)
+        print(node.name)
+
+    node_names.reverse()
+    return node_names
+
 
 def main():
     blossumMatrix = parse_score('./blosum62matrix.txt')
@@ -81,25 +90,57 @@ def main():
     raw3 = "AAAA"
     raw4 = "CCAC"
     raw5 = "GAGA"
-    raw6 = "CCGG"
-    # align = pairwise2.align.globaldx(raw1, raw2, blossumMatrix)
-    # seq1 = align[0][0]
-    # seq2 = align[0][1]
-    data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6], blossumMatrix)
-    print(data_dm)
-    dm = DistanceMatrix(list(data_dm), ["blaa","b","c","d","ganz_lange_id","f"])
-    print(dm)
+    raw6 = "GTAC"
+    raw7 = "GTTT"
+    raw8 = "GTTG"
+    data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8], blossumMatrix)
+    dm = DistanceMatrix(list(data_dm), ["blaa","b","c","d","ganzlangeid","f",'was','wer'])
     tree = nj(dm).root_at_midpoint()
     print(tree.ascii_art())
-    for node in tree.preorder():
-        print(node.name)
-    # print(hamming_dist(seq1, seq2))
-    # print(kimmura_dist(seq1,seq2))
+    joining_list =  get_joining_list(tree)
+    id_sequence_dict = dict(zip(["blaa","b","c","d","ganzlangeid","f",'was','wer'],[raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8]))
 
-    subal1 = ["ALEE", "A-EE", "-LEE"]
-    subal2 = ["A-ERE", "ALER-"]
+    qu = []
+    i = 0
+    while i < len(joining_list) -1:
+        print(i)
+        current = joining_list[i]
+        next = joining_list[i+1]
+        print(current)
+        print(next)
 
-    print(pair_guided_alignment(subal1, subal2, blossumMatrix))
+        if current in id_sequence_dict.keys() and next in id_sequence_dict.keys():
+            seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next]], blossumMatrix)
+            seqs1.extend(seqs2)
+            qu.append(seqs1)
+            print("aaaaaaaaaaaaaaa")
+            i += 2
+
+        if current == None and next in id_sequence_dict.keys():
+            prof1 = qu[0]
+            del qu[0]
+            seqs1, seqs2 = pair_guided_alignment(prof1, [id_sequence_dict], blossumMatrix)
+            seqs1.extend(seqs2)
+            qu.append(seqs1)
+            i += 2
+        if current == None and next == None:
+            prof1 = qu[0]
+            del qu[0]
+            prof2 = qu[0]
+            del qu[0]
+            seqs1, seqs2 = pair_guided_alignment(prof1, prof2, blossumMatrix)
+            seqs1.extend(seqs2)
+            qu.append(seqs1)
+            i += 2
+
+        i += 1
+
+    print(qu)
+
+
+
+
+# print(pair_guided_alignment(subal1, subal2, blossumMatrix))
 
 
 
