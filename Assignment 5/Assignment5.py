@@ -1,6 +1,7 @@
-from FastA import *
 import numpy as np
 from Bio import pairwise2
+from skbio import DistanceMatrix
+from skbio.tree import nj
 
 def parse_score(path):
     file = open(path, 'r')
@@ -40,7 +41,7 @@ def distance_matrix(strs, score):
             alignment = pairwise2.align.globaldx(strs[i], strs[j], score)
             seq1 = alignment[0][0]
             seq2 = alignment[0][1]
-            dist_matrix[i,j] = kimmura_dist(seq1, seq2)
+            dist_matrix[i,j] = abs(kimmura_dist(seq1, seq2))
     return dist_matrix
 
 def pair_guided_alignment(align1:list, align2:list, score):
@@ -72,18 +73,28 @@ def pair_guided_alignment(align1:list, align2:list, score):
 
 
 
-
-
 def main():
     blossumMatrix = parse_score('./blosum62.txt')
-    print(blossumMatrix)
     #headers, sequences = read_sequence('./BB11007_unaligned.fasta')
-    align = pairwise2.align.globaldx("A-GG", "G--GA", blossumMatrix)
-    seq1 = align[0][0]
-    seq2 = align[0][1]
-    print(seq1,seq2)
-    print(hamming_dist(seq1, seq2))
-    print(kimmura_dist(seq1,seq2))
+    raw1 = "AGGA"
+    raw2 = "GGAC"
+    raw3 = "AAAA"
+    raw4 = "CCAC"
+    raw5 = "GAGA"
+    raw6 = "CCGG"
+    # align = pairwise2.align.globaldx(raw1, raw2, blossumMatrix)
+    # seq1 = align[0][0]
+    # seq2 = align[0][1]
+    data_dm = distance_matrix([raw1, raw2, raw3,raw4,raw5, raw6], blossumMatrix)
+    print(data_dm)
+    dm = DistanceMatrix(list(data_dm), ["blaa","b","c","d","ganz_lange_id","f"])
+    print(dm)
+    tree = nj(dm).root_at_midpoint()
+    print(tree.ascii_art())
+    for node in tree.preorder():
+        print(node.name)
+    # print(hamming_dist(seq1, seq2))
+    # print(kimmura_dist(seq1,seq2))
 
     subal1 = ["ALEE", "A-EE", "-LEE"]
     subal2 = ["A-ERE", "ALER-"]
