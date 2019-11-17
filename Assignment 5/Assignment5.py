@@ -9,6 +9,22 @@ from SAScoringSystem import *
 import re
 import FastA
 
+logger = logging.getLogger()
+
+FORMAT = '%(levelname)s: %(filename)s %(lineno)d, %(funcName)s: %(message)s'
+logging.basicConfig(level = logging.INFO, format = FORMAT)
+
+def find_new_gaps(old_sequence, new_sequence):
+    old_index = 0
+    gap_indices = []
+    for new_index in range(len(new_sequence)):
+        if old_index < len(old_sequence) and new_sequence[new_index] == old_sequence[old_index]:
+            old_index += 1
+        else:
+            gap_indices.append(new_index)
+    return gap_indices
+
+
 
 
 def parse_score(path):
@@ -52,31 +68,31 @@ def distance_matrix(strs, aligner):
         for j in range(i,n):
             aligner.sequences = [strs[i], strs[j]]
             alignment = aligner.align()
+
             seq1 = alignment[0]
             seq2 = alignment[1]
             dist_matrix[i,j] = abs(kimmura_dist(seq1, seq2))
             dist_matrix[j,i] = abs(kimmura_dist(seq1, seq2))
 
     return dist_matrix
-
+icq = []
 def pair_guided_alignment(align1:list, align2:list, aligner):
+    global icq
     seq1 = np.random.choice(align1)
     seq2 = np.random.choice(align2)
     aligner.sequences = [seq1, seq2]
 
     new_alignment = aligner.align()
+    icq.extend(new_alignment)
     
     new_seq1 = new_alignment[0]
     new_seq2 = new_alignment[1]
+    logger.info("old: {},\nnew: {}".format(seq1, new_seq1))
 
-    newgaps1 =  np.where(np.array(list(new_seq1)) == "-")[0]
-    newgaps2 = np.where(np.array(list(new_seq2)) == "-")[0]
+    newgaps1 = find_new_gaps(seq1, new_seq1)
+    newgaps2 = find_new_gaps(seq2, new_seq2)
 
-    oldgaps1 =  np.where(np.array(list(seq1)) == "-")[0]
-    oldgaps2 = np.where(np.array(list(seq2)) == "-")[0]
-
-    newgaps1 = np.delete(newgaps1, np.where(newgaps1 == oldgaps1)[0])
-    newgaps2 = np.delete(newgaps2, np.where(newgaps2 == oldgaps2)[0])
+    logger.info("gaps1: {},\ngaps2: {}".format(newgaps1, newgaps2))
 
 
     for i in range(len(align1)):
@@ -94,7 +110,6 @@ def get_joining_list(tree):
     node_names = []
     for node in tree.levelorder():
         node_names.append(node.name)
-        print(node.name)
 
     node_names.reverse()
     return node_names
@@ -110,18 +125,14 @@ def main():
     data_dm = distance_matrix(sequences, aligner)
     dm = DistanceMatrix(data_dm, headers_idx)
     tree = nj(dm).root_at_midpoint()
-    print(tree.ascii_art())
     joining_list =  get_joining_list(tree)
     id_sequence_dict = dict(zip(headers_idx,sequences))
-    print(joining_list)
     qu = []
     i = 0
-    print(id_sequence_dict)
     while i < len(joining_list) -1:
 
         current = joining_list[i]
         next_seq = joining_list[i+1]
-        print(qu)
         if current in id_sequence_dict.keys() and next_seq in id_sequence_dict.keys():
             seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next_seq]], aligner)
             seqs1.extend(seqs2)
@@ -153,8 +164,8 @@ def main():
             i += 2
         else:
             i += 1
-        print(qu)
     FastA.write_comparison("test.fasta", headers, qu[0]) #TODO: sort headers correctly
+    FastA.write_comparison("pairwise_alignments.fasta", ["alignment {}".format(i) for i in range(len(icq))], icq) #TODO: sort headers correctly
 
 
 
