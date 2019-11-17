@@ -32,12 +32,15 @@ def kimmura_dist(str1, str2):
     hamm_dist = hamming_dist(str1, str2)
     return -np.log(1-hamm_dist - hamm_dist**2/5)
 
-def distance_matrix(strs):
+def distance_matrix(strs, score):
     n = len(strs)
     dist_matrix = np.zeros((n,n))
     for i in range(n):
         for j in range(n):
-            dist_matrix[i,j] = kimmura_dist(run_nw(strs[i], strs[j])[:2])
+            alignment = pairwise2.align.globaldx(strs[i], strs[j], score)
+            seq1 = alignment[0][0]
+            seq2 = alignment[0][1]
+            dist_matrix[i,j] = kimmura_dist(seq1, seq2)
     return dist_matrix
 
 def pair_guided_alignment(align1:list, align2:list, score):
@@ -52,10 +55,6 @@ def pair_guided_alignment(align1:list, align2:list, score):
     newgaps1 =  np.where(np.array(list(seq1)) == "-")[0]
 
 
-
-
-
-    for i in range(len(seq1)):
 
 
 def main():
