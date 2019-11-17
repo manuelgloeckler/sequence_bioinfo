@@ -1,0 +1,5 @@
+
+run with python3 Assignment5.py -i BB11007_unaligned.fasta -s blosum62matrix.txt
+
+./qscore -test MSA_result.fasta -ref BB11007_BALIBASE.fasta 
+-> Test=MSA_result.fasta;Ref=BB11007_BALIBASE.fasta;Q=0.202;TC=0.0466
