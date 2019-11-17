@@ -39,7 +39,6 @@ def hamming_dist(str1, str2):
 def kimmura_dist(str1, str2):
     hamm_dist = hamming_dist(str1, str2)
     exp_val = 1-hamm_dist - ((hamm_dist**2)/5)
-    print(str1, str2, exp_val)
     if exp_val > 0:
         return -np.log(exp_val)
     else:
@@ -56,15 +55,14 @@ def distance_matrix(strs, aligner):
             seq2 = alignment[1]
             dist_matrix[i,j] = abs(kimmura_dist(seq1, seq2))
             dist_matrix[j,i] = abs(kimmura_dist(seq1, seq2))
-    print(dist_matrix == dist_matrix.T)
+
     return dist_matrix
 
 def pair_guided_alignment(align1:list, align2:list, aligner):
     seq1 = np.random.choice(align1)
     seq2 = np.random.choice(align2)
-    print(align2, align1)
     aligner.sequences = [seq1, seq2]
-    print(aligner.sequences)
+
     new_alignment = aligner.align()
     
     new_seq1 = new_alignment[0]
@@ -125,11 +123,11 @@ def main():
     print(tree.ascii_art())
     joining_list =  get_joining_list(tree)
     id_sequence_dict = dict(zip(["blaa","b","c","d","ganzlangeid","f",'was','wer'],[raw1, raw2, raw3,raw4,raw5, raw6,raw7,raw8]))
-
+    print(joining_list)
     qu = []
     i = 0
     while i < len(joining_list) -1:
-        print(i)
+
         current = joining_list[i]
         next_seq = joining_list[i+1]
 
@@ -137,17 +135,23 @@ def main():
             seqs1, seqs2 = pair_guided_alignment([id_sequence_dict[current]], [id_sequence_dict[next_seq]], aligner)
             seqs1.extend(seqs2)
             qu.append(seqs1)
-            print("aaaaaaaaaaaaaaa")
-            i += 2
 
-        if current == None and next_seq in id_sequence_dict.keys():
+            i += 2
+        elif current == None and next_seq in id_sequence_dict.keys():
             prof1 = qu[0]
             del qu[0]
-            seqs1, seqs2 = pair_guided_alignment(prof1, [id_sequence_dict], aligner)
+            seqs1, seqs2 = pair_guided_alignment(prof1, [id_sequence_dict[next_seq]], aligner)
             seqs1.extend(seqs2)
             qu.append(seqs1)
             i += 2
-        if current == None and next_seq == None:
+        elif next_seq == None and current in id_sequence_dict.keys():
+            prof1 = qu[0]
+            del qu[0]
+            seqs1, seqs2 = pair_guided_alignment(prof1, [id_sequence_dict[current]], aligner)
+            seqs1.extend(seqs2)
+            qu.append(seqs1)
+            i += 2
+        elif current == None and next_seq == None:
             prof1 = qu[0]
             del qu[0]
             prof2 = qu[0]
@@ -156,10 +160,13 @@ def main():
             seqs1.extend(seqs2)
             qu.append(seqs1)
             i += 2
+        else:
+            i += 1
+        print(qu)
 
-        i += 1
 
-    print(qu)
+
+
 
 
 
