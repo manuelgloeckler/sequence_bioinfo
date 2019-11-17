@@ -50,9 +50,26 @@ def pair_guided_alignment(align1:list, align2:list, score):
     new_seq1 = new_alignment[0]
     new_seq2 = new_alignment[1]
 
-    gaps1 = np.where(np.array(list(seq1)) == "-")[0]
-    gaps2 = np.where(np.array(list(seq2)) == "-")[0]
-    newgaps1 =  np.where(np.array(list(seq1)) == "-")[0]
+    newgaps1 =  np.where(np.array(list(new_seq1)) == "-")[0]
+    newgaps2 = np.where(np.array(list(new_seq2)) == "-")[0]
+
+    oldgaps1 =  np.where(np.array(list(seq1)) == "-")[0]
+    oldgaps2 = np.where(np.array(list(seq2)) == "-")[0]
+
+    newgaps1 = np.delete(newgaps1, np.where(newgaps1 == oldgaps1)[0])
+    newgaps2 = np.delete(newgaps2, np.where(newgaps2 == oldgaps2)[0])
+
+
+    for i in range(len(align1)):
+        for col in newgaps1:
+            align1[i] = align1[i][:col] + "-" + align1[i][col:]
+
+    for i in range(len(align2)):
+        for col in newgaps2:
+            align2[i] = align2[i][:col] + "-" + align2[i][col:]
+
+    return align1, align2
+
 
 
 
@@ -67,6 +84,12 @@ def main():
     print(seq1,seq2)
     print(hamming_dist(seq1, seq2))
     print(kimmura_dist(seq1,seq2))
+
+    subal1 = ["ALEE", "A-EE", "-LEE"]
+    subal2 = ["A-ERE", "ALER-"]
+
+    print(pair_guided_alignment(subal1, subal2, blossumMatrix))
+
 
 
 if __name__ == "__main__":
