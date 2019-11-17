@@ -74,7 +74,7 @@ def pair_guided_alignment(align1:list, align2:list, score):
 
 
 def main():
-    blossumMatrix = parse_score('./blosum62.txt')
+    blossumMatrix = parse_score('./blosum62matrix.txt')
     #headers, sequences = read_sequence('./BB11007_unaligned.fasta')
     raw1 = "AGGA"
     raw2 = "GGAC"
