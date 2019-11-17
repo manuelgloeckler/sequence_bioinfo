@@ -1,4 +1,5 @@
 from FastA import *
+import numpy as np
 
 def parse_score(path):
     file = open(path, 'r')
@@ -77,6 +78,18 @@ def traceback_to_alignment(matT, x_seq, y_seq):
 def run_nw(x_seq, y_seq, score):
     matT = matrix_builder(x_seq, y_seq, score)
     return traceback_to_alignment(matT, x_seq, y_seq)
+
+def hamming_dist(str1, str2):
+    assert (len(str1) != len(str2))
+    score = 0
+    for i in range(len(str1)):
+        if str1[i] != str2[i] and (str1[i] != "-" or str1[i] != "-"):
+            score +=1
+    return score
+
+def kimmura_dist(str1, str2):
+    hamm_dist = hamming_dist(str1, str2)
+    return -mp.ln(1-hamm_dist - hamm_dist**2/5)
 
 def main():
     blossumMatrix = parse_score('./BLOSUM62.txt')
