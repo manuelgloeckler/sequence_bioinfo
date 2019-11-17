@@ -89,7 +89,7 @@ def hamming_dist(str1, str2):
 
 def kimmura_dist(str1, str2):
     hamm_dist = hamming_dist(str1, str2)
-    return -mp.ln(1-hamm_dist - hamm_dist**2/5)
+    return -np.log(1-hamm_dist - hamm_dist**2/5)
 
 def main():
     blossumMatrix = parse_score('./BLOSUM62.txt')
