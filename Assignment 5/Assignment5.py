@@ -126,6 +126,7 @@ def main():
 
     headers, sequences = FastA.read_sequence(args.input)
     headers_idx = [str(i) for i in range(len(sequences))]
+    seq_to_header = {sequences[i] : headers[i] for i in range(len(sequences))}
 
     data_dm = distance_matrix(sequences, aligner)
     dm = DistanceMatrix(data_dm, headers_idx)
@@ -171,10 +172,11 @@ def main():
             i += 1
 
     print("Writing output to : {}".format(args.output))
+    headers = [seq_to_header[s.replace("-","")] for s in qu[0]]
     if args.compare:
-        FastA.write_comparison(args.output, headers, qu[0]) #TODO: sort headers correctly
+        FastA.write_comparison(args.output, headers, qu[0])
     else:
-        FastA.write_sequences(args.output, headers, qu[0]) #TODO: sort headers correctly
+        FastA.write_sequences(args.output, headers, qu[0])
 
 
 if __name__ == "__main__":
