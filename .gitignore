@@ -5,6 +5,7 @@
 */material
 */__pycache__
 .vscode
+.vscode/
 
 # User-specific stuff
 .idea/**/workspace.xml
