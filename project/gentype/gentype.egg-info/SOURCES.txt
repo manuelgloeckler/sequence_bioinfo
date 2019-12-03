@@ -1,0 +1,8 @@
+setup.py
+gentype/__init__.py
+gentype/ensembl.py
+gentype.egg-info/PKG-INFO
+gentype.egg-info/SOURCES.txt
+gentype.egg-info/dependency_links.txt
+gentype.egg-info/not-zip-safe
+gentype.egg-info/top_level.txt
