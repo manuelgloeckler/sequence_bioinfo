@@ -89,7 +89,37 @@ class Ensembl():
     def get_variants(self, chromosome, start, end, samples):
         return fetch_variants(chromosome, start, end, samples)
 
+
+class Variant():
+    def __init__(self, kwargs):
+        self.INFO = dict()
+        for key, value in kwargs.items():
+            if key == "start":
+                self.start = value
+            elif key == "end":
+                self.end = value
+            elif key == "id":
+                self.id = value
+            elif key == "referenceBases":
+                self.referenceBases = value
+            elif key == "alternateBases":
+                self.alternateBases = value
+            elif key == "calls":
+                self.calls = value
+            else:
+                self.INFO[key] = value
+
+    def __str__(self):
+        var = self.id[0] + ":" + str(self.start) + "..." + str(self.end) + ":" + self.referenceBases + "|"
+        for alternate in self.alternateBases:
+            var += alternate +","
     
+        return var
+
+
+
+
+
 """ Fetches all samples from ENSEMBL and reprot dictionary """
 def fetch_samples(pop = "ALL", project = "1000GENOMES:phase_3"):
     server = "https://rest.ensembl.org"
@@ -104,6 +134,11 @@ def fetch_samples(pop = "ALL", project = "1000GENOMES:phase_3"):
     return r.json()
 
 
+
+
+    
+
+
 """ Fetches all variants for a defined start and endpoint in defined samples """            
 def fetch_variants(chromosome,
                 start,
@@ -113,12 +148,12 @@ def fetch_variants(chromosome,
                 variantSetId = 3, 
                 referenceName = 22):
     decoded = _fetch_variants_worker(chromosome, start, end, samples, pageSize, variantSetId, referenceName, None)
-    variants = decoded["variants"]
+    variants = list(map(lambda x: Variant(x), decoded["variants"]))
     nextPage = decoded["nextPageToken"]
 
     while(nextPage != None):
         decoded = _fetch_variants_worker(chromosome, start, end, samples, pageSize, variantSetId, referenceName, nextPage) 
-        variants.append(decoded["variants"])
+        variants.extend(list(map(lambda x: Variant(x), decoded["variants"])))
         nextPage = decoded["nextPageToken"]
 
     return variants
