@@ -18,6 +18,7 @@ class Ensembl():
             pickle.dump(self, file1)
 
     """ Static Function to load a state """
+    @staticmethod
     def load(path):
         with open(path, 'rb') as file1:
             new_datacolecter = pickle.load(file1)
@@ -45,9 +46,8 @@ class Ensembl():
                 self.samples.append(key)
                 self.samples_info[key] = entry 
         return self.samples
-    
-    """ Get samples by population """
-    def get_samples_by_pop(self, population):
+
+    def _create_pop_sample_mappings(self):
         if len(self.samples) == 0:
             self.get_samples()
 
@@ -56,7 +56,7 @@ class Ensembl():
 
         if len(self.map_pop_to_samples) == 0:
             for pop in self.populations:
-                samples_pop = fetch_samples(pop = "1000GENOMES:phase_3:" + population)[0]["individuals"]
+                samples_pop = fetch_samples(pop = pop)[0]["individuals"]
                 
                 for entry in samples_pop:
                     key = entry["name"].split(":")[-1]
@@ -64,6 +64,10 @@ class Ensembl():
                     item = self.map_pop_to_samples.get(pop, [])
                     item.append(key)
                     self.map_pop_to_samples[pop] = item
+    
+    """ Get samples by population """
+    def get_samples_by_pop(self, population):
+        self._create_pop_sample_mappings()
 
         if population in self.map_pop_to_samples.keys():
             return self.map_pop_to_samples[population]
@@ -73,11 +77,10 @@ class Ensembl():
 
     """ This method will return the population of a sample """
     def get_pop_by_sample(self, sample):
-        if len(self.map_samples_to_pop) == 0:
-            this.get_samples_by_pop()
+        self._create_pop_sample_mappings()
 
-        if sample in map_samples_to_pop.keys():
-            return map_samples_to_pop[sample]
+        if sample in self.map_samples_to_pop.keys():
+            return self.map_samples_to_pop[sample]
         else:
             warnings.warn("This sample does not exist, returned ALL")
             return "ALL"
@@ -88,9 +91,9 @@ class Ensembl():
 
     
 """ Fetches all samples from ENSEMBL and reprot dictionary """
-def fetch_samples(pop = "1000GENOMES:phase_3:ALL"):
-    server = "https://grch37.rest.ensembl.org"
-    ext = "/info/variation/populations/human/" + pop + "?"
+def fetch_samples(pop = "ALL", project = "1000GENOMES:phase_3"):
+    server = "https://rest.ensembl.org"
+    ext = "/info/variation/populations/human/"+ project + ":" + pop + "?"
 
     r = requests.get(server+ext, headers={ "Content-Type" : "application/json"})
 
@@ -151,9 +154,9 @@ def _fetch_variants_worker(chromosome,
     return r.json()
             
 """ Fetches all populations from ENSEMBL """
-def fetch_populations(filter = "filter=LD"):
+def fetch_populations(filter = "filter=LD", species = "homo_sapiens"):
     server = "https://grch37.rest.ensembl.org"
-    ext = "/info/variation/populations/homo_sapiens?" + filter
+    ext = "/info/variation/populations/" + species + "?" + filter
     r = requests.get(server+ext, headers={ "Content-Type" : "application/json"})
 
     if not r.ok:
@@ -161,6 +164,46 @@ def fetch_populations(filter = "filter=LD"):
         sys.exit()
 
     return r.json()
+
+
+def ping():
+    server = "https://grch37.rest.ensembl.org"
+    ext = "/info/ping?"
+    
+    r = requests.get(server+ext, headers={ "Content-Type" : "application/json"})
+    
+    if not r.ok:
+        r.raise_for_status()
+        sys.exit()
+    
+    return bool(r.json()["ping"])
+
+def fetch_sequence_by_id(id, format = 'plain'):
+    server = "https://rest.ensembl.org"
+    ext = "/sequence/id/" + id + "?"
+    
+    r = requests.get(server+ext, headers={ "Content-Type" : "text/" + format})
+    
+    if not r.ok:
+        r.raise_for_status()
+        sys.exit()
+    
+    
+    return r.text
+
+def fetch_sequence_by_region(chromosome, start, end, direction, species = "human"):
+    server = "https://rest.ensembl.org"
+    ext = "/sequence/region/" + species + "/" + str(chromosome) + ":" + str(start) + ".." + str(end) + ":" + str(direction)+ "?"
+ 
+    r = requests.get(server+ext, headers={ "Content-Type" : "text/plain"})
+ 
+    if not r.ok:
+        r.raise_for_status()
+        sys.exit()
+ 
+    return r.text
+
+
 
 
 
