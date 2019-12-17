@@ -106,6 +106,24 @@ class Ensembl():
         
         return self.sequence_by_id[key]
 
+    # TODO add sequence by region and so one...
+
+
+class Individual:
+    def __init__(id, population, variants = []):
+        self.id = id
+        self.population = population
+        self.variants = variants
+        self.allele = list()
+        self.genotype = list()
+
+    def generate_allele(variants):
+        pass
+
+    def generate_genotype(variants):
+        pass
+
+
 
 
 class Variant():
