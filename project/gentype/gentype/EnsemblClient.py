@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
-# code directly taken from https://github.com/Ensembl/ensembl-rest/wiki/Example-Python-Client
+# code is slightly altered version from https://github.com/Ensembl/ensembl-rest/wiki/Example-Python-Client
 
 import sys
 import json
 import time
 import logging
 
+logger = logging.getLogger()
 # Python 2/3 adaptability
 try:
     from urllib.parse import urlparse, urlencode
@@ -18,13 +19,13 @@ except ImportError:
     from urllib2 import urlopen, Request, HTTPError
 
 class EnsemblClient(object):
-    def __init__(self, server='http://rest.ensembl.org', reqs_per_sec=15):
+    def __init__(self, server='https://grch37.rest.ensembl.org', reqs_per_sec=15):
         self.server = server
         self.reqs_per_sec = reqs_per_sec
         self.req_count = 0
         self.last_req = 0
 
-    def perform_rest_action(self, endpoint, hdrs=None, params=None):
+    def perform_rest_action(self, endpoint, hdrs=None, params=None, data=None):
         if hdrs is None:
             hdrs = {}
 
@@ -33,8 +34,6 @@ class EnsemblClient(object):
 
         if params:
             endpoint += '?' + urlencode(params)
-
-        data = None
 
         # check if we need to rate limit ourselves
         if self.req_count >= self.reqs_per_sec:
@@ -45,7 +44,8 @@ class EnsemblClient(object):
             self.req_count = 0
         
         try:
-            request = Request(self.server + endpoint, headers=hdrs)
+            if not data is None: data = str(json.dumps(data)).encode()
+            request = Request(self.server + endpoint, headers=hdrs, data=data)
             response = urlopen(request)
             content = response.read()
             if content:
@@ -57,6 +57,7 @@ class EnsemblClient(object):
             if e.code == 429:
                 if 'Retry-After' in e.headers:
                     retry = e.headers['Retry-After']
+                    logger.warning("Got time restricted by Ensembl-Server. Will retry in {}.".format(retry))
                     time.sleep(float(retry))
                     self.perform_rest_action(endpoint, hdrs, params = {})
             else:
