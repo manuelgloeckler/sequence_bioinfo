@@ -1,6 +1,10 @@
 setup.py
+gentype/DB_setup.py
+gentype/DataManager.py
+gentype/EnsemblClient.py
 gentype/__init__.py
-gentype/ensembl.py
+gentype/inference.py
+gentype/model.py
 gentype.egg-info/PKG-INFO
 gentype.egg-info/SOURCES.txt
 gentype.egg-info/dependency_links.txt

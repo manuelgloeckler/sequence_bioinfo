@@ -1,8 +1,14 @@
 import pickle
 import sqlite3
 import sys
-from EnsemblClient import EnsemblClient
-import DB_setup
+try:
+    from .EnsemblClient import EnsemblClient
+except:
+    from EnsemblClient import EnsemblClient
+try:
+    from . import DB_setup
+except:
+    import DB_setup
 import logging
 import numpy as np
 FORMAT = '%(levelname)s: %(filename)s %(lineno)d, %(funcName)s: %(message)s'
@@ -221,13 +227,18 @@ class DataManager:
             self.db_connector.commit()
             if data['pageToken'] is None: break
 
-    def generate_inference_matrix(self, population = "ALL", project = "1000GENOMES:phase_3"):
+    def generate_inference_matrix(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3"):
         """
-        Generates the inference matrix based on the database and the given project and population.
+        Generates the inference matrix for the section specified by start and end,
+        based on the database and the given project and population.
         Make sure to have fetched the variants and individuals beforehand.
         Each row in the matrix represents an individual, each column a variant.
 
         Args:
+            start (int, optional): Begining (inclusive) of the section for which to consider variants.
+                Defaults to 0.
+            end (int, optional): End (exclusive) of the section for which to consider variants.
+                Defaults to sys.maxsize.
             population (str, optional): Name of the population for which to
                 generate the matrix. Defaults to ALL.
             project (str, optional): Name of the project for which to generate the matrix.
@@ -238,13 +249,15 @@ class DataManager:
             inference matrix. Each row in the matrix represents an individual,
                 each column a variant.
         """
+        if end is None: end = sys.maxsize
         population = "{}:{}".format(project, population)
         variants_individuals = self.db_cursor.execute("""
         SELECT variant, IV.individual, expression1, expression2 
-        FROM individuals_variants IV JOIN individuals_populations IP
-        ON IV.individual = IP.individual
-        WHERE population = ?;
-        """, (population,))
+        FROM individuals_variants IV 
+        JOIN individuals_populations IP ON IV.individual = IP.individual
+        JOIN variants V ON IV.variant = V.id
+        WHERE population = ? AND start >= ? AND end < ?;
+        """, (population, start, end))
 
         # setup map to numerical values
         variants_individuals = list(variants_individuals) #make the iterable permanent
@@ -271,7 +284,7 @@ class DataManager:
 
 if __name__ == '__main__':
     client = EnsemblClient()
-    model = Model(client, "test_db1.db")
+    model = DataManager(client, "test_db1.db")
     #model.fetch_populations(pop_filter=None)
     #model.fetch_individuals()
     #model.fetch_individuals("CHB", "1000GENOMES:phase_3")
