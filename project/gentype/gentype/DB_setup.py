@@ -156,7 +156,8 @@ def ensure_variants_table(cursor):
 def ensure_individuals_variants_table(cursor):
     """
     Esures that the individuals_variants table exist in the sqlite database.
-    It has the entries (variant, individual, expression).
+    It has the entries (variant, individual, expression1, expression2).
+    
     If it doesn't exist it will be created.
 
     Args:
@@ -167,7 +168,8 @@ def ensure_individuals_variants_table(cursor):
         CREATE TABLE IF NOT EXISTS individuals_variants (
             variant VARCHAR(64),
             individual VARCHAR(64),
-            expression INT,
+            expression1 BIT,
+            expression2 BIT,
             UNIQUE(individual, variant),
             FOREIGN KEY (individual) REFERENCES individuals(name),
             FOREIGN KEY (variant) REFERENCES variants(id)

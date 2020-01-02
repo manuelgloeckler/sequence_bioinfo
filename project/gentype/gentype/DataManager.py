@@ -4,15 +4,16 @@ import sys
 from EnsemblClient import EnsemblClient
 import DB_setup
 import logging
+import numpy as np
 FORMAT = '%(levelname)s: %(filename)s %(lineno)d, %(funcName)s: %(message)s'
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
 logger = logging.getLogger()
 
 
-class Model:
+class DataManager:
     def __init__(self, client, local_database):
         """
-        Model to manage all relevant information and access to it.
+        Class to manage all relevant information and access to it.
 
         Args:
             client (EnsemblClient): Object with which to make request to the server from which to fetch the data
@@ -55,7 +56,11 @@ class Model:
             individuals = population["individuals"]
             def individual_generator():
                 for individual in individuals:
-                    yield (individual['name'].split(":")[2], individual['gender'])
+                    try:
+                        yield (individual['name'].split(":")[2], individual['gender'])
+                    except IndexError:
+                        logger.warning("Name '{}' did not adhere to naming convention. Was skipped.".format(individual['name']))
+
             if sqlite3.sqlite_version > "3.24":
                 try:
                     self.db_cursor.executemany("INSERT INTO individuals(name, gender) VALUES (?, ?) ON CONFLICT DO NOTHING", individual_generator())
@@ -72,7 +77,10 @@ class Model:
             # connect individuals with their population
             def individual_population_generator():
                 for individual in individuals:
-                    yield (individual['name'].split(":")[2], population['name'])
+                    try:
+                        yield (individual['name'].split(":")[2], population['name'])
+                    except IndexError:
+                        logger.warning("Name '{}' did not adhere to naming convention. Was skipped.".format(individual['name']))
             if sqlite3.sqlite_version > "3.24":
                 try:
                     self.db_cursor.executemany("INSERT INTO individuals_populations(individual, population) VALUES (?, ?) ON CONFLICT DO NOTHING", individual_population_generator())
@@ -134,9 +142,9 @@ class Model:
         for referenceSet in referenceSets['referenceSets']:
             try:
                 referenceSet_info = (referenceSet['id'], referenceSet['description'], referenceSet['sourceURI'], referenceSet['name'], referenceSet['ncbiTaxonId'])
-                self.db_cursor.execute("INSERT INTO referenceSet(id, description, sourceURI, name, ncbiTaxonId) VALUES (?, ?, ?, ?, ?)", referenceSet_info)
+                self.db_cursor.execute("INSERT INTO referenceSets(id, description, sourceURI, name, ncbiTaxonId) VALUES (?, ?, ?, ?, ?)", referenceSet_info)
             except sqlite3.IntegrityError as e:
-                logger.info("Tried to insert {} into populations table, but got error: {}.".format(population_info, e))
+                logger.info("Tried to insert {} into referenceSets table, but got error: {}.".format(referenceSet_info, e))
                 
         self.db_connector.commit()
 
@@ -177,7 +185,7 @@ class Model:
     def fetch_variants(self, start, end, reference_name, variant_set_id = 3):
         """
         Sends a request for all variants contained in the reference sequence (identified by reference_name) from start to end 
-        and part of the variant set (identified by variantSetId, always using 1 seems sufficient) in Ensembl. 
+        and part of the variant set (identified by variantSetId, always using 3 seems sufficient) in Ensembl. 
         The result will be written to the local database.
 
         Args:
@@ -204,8 +212,8 @@ class Model:
                 try:
                     def individual_variant_generator():
                         for call in variant["calls"]:
-                            yield (variant['id'], call['callSetName'], sum(call['genotype']))
-                    self.db_cursor.executemany("INSERT INTO individuals_variants(variant, individual, expression) VALUES (?, ?, ?)", individual_variant_generator())
+                            yield (variant['id'], call['callSetName'], call['genotype'][0], call['genotype'][1])
+                    self.db_cursor.executemany("INSERT INTO individuals_variants(variant, individual, expression1, expression2) VALUES (?, ?, ?, ?)", individual_variant_generator())
                 except sqlite3.IntegrityError as e:
                     logger.info("Tried to insert {} into individuals_variants table, but got error: {}. Make sure to fetch individuals first.".format(variant["calls"], e))
                     
@@ -213,11 +221,65 @@ class Model:
             self.db_connector.commit()
             if data['pageToken'] is None: break
 
+    def generate_inference_matrix(self, population = "ALL", project = "1000GENOMES:phase_3"):
+        """
+        Generates the inference matrix based on the database and the given project and population.
+        Make sure to have fetched the variants and individuals beforehand.
+        Each row in the matrix represents an individual, each column a variant.
+
+        Args:
+            population (str, optional): Name of the population for which to
+                generate the matrix. Defaults to ALL.
+            project (str, optional): Name of the project for which to generate the matrix.
+                Defaults to 1000GENOMES:phase_3. Our algorithms does not support all 
+                naming conventions.
+
+        Returns:
+            inference matrix. Each row in the matrix represents an individual,
+                each column a variant.
+        """
+        population = "{}:{}".format(project, population)
+        variants_individuals = self.db_cursor.execute("""
+        SELECT variant, IV.individual, expression1, expression2 
+        FROM individuals_variants IV JOIN individuals_populations IP
+        ON IV.individual = IP.individual
+        WHERE population = ?;
+        """, (population,))
+
+        # setup map to numerical values
+        variants_individuals = list(variants_individuals) #make the iterable permanent
+        number_variants = 0
+        number_individuals = 0
+        variants_map = {}
+        individuals_map = {}
+        for entry in variants_individuals:
+            variant, individual, expr1, expr2 = entry
+            if not variant in variants_map:
+                variants_map[variant] = number_variants
+                number_variants += 1
+            if not individual in individuals_map:
+                individuals_map[individual] = number_individuals
+                number_individuals += 1
+        
+        # create matrix
+        inference_matrix = np.ndarray((number_individuals, number_variants))
+        for entry in variants_individuals:
+            variant, individual, expr1, expr2 = entry
+            inference_matrix[individuals_map[individual]][variants_map[variant]] = expr1 + expr2
+        
+        return inference_matrix
+
 if __name__ == '__main__':
     client = EnsemblClient()
     model = Model(client, "test_db1.db")
-    model.fetch_populations(pop_filter=None)
-    model.fetch_individuals()
-    model.fetch_variants(17190024, 17190824, "22")
+    #model.fetch_populations(pop_filter=None)
+    #model.fetch_individuals()
+    #model.fetch_individuals("CHB", "1000GENOMES:phase_3")
+    matrix = model.generate_inference_matrix("CHB")
+    np.set_printoptions(edgeitems = max(matrix.shape))
+    print(matrix)
+    #model.fetch_reference_set()
+    #model.fetch_reference_sequences("GRCh37.p13")
+    #model.fetch_variants(17671934, 17675934, "22")
 
 
