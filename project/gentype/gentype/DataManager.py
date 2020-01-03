@@ -282,17 +282,56 @@ class DataManager:
         
         return inference_matrix
 
+    def get_variation_distribution(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3"):
+        """
+        Returns a dictionary mapping number of variants within the specified region 
+        to the number of strands with that number of variants.
+
+        Args:
+            start (int, optional): Begining (inclusive) of the section for which to consider variants.
+                Defaults to 0.
+            end (int, optional): End (exclusive) of the section for which to consider variants.
+                Defaults to sys.maxsize.
+            population (str, optional): Name of the population for which to
+                generate the distribution. Defaults to ALL.
+            project (str, optional): Name of the project for which to generate the distribution.
+                Defaults to 1000GENOMES:phase_3. Our algorithms does not support all 
+                naming conventions.
+
+        Returns:
+            Distribution via dictionary. Maps number of variants within the specified region 
+                to the number of strands with that number of variants. I.e. {n : #strands with n variations}.
+        """
+        if end is None: end = sys.maxsize
+        population = "{}:{}".format(project, population)
+        variants_individuals = self.db_cursor.execute("""
+        SELECT IV.individual, SUM(expression1), SUM(expression2) 
+        FROM individuals_variants IV 
+        JOIN individuals_populations IP ON IV.individual = IP.individual
+        JOIN variants V ON IV.variant = V.id
+        WHERE population = ? AND start >= ? AND end < ?
+        GROUP BY IV.individual;
+        """, (population, start, end))
+
+        distribution = {}
+        for entry in variants_individuals:
+            individual, sum_expr1, sum_expr2 = entry
+            distribution[sum_expr1] = distribution.get(sum_expr1, 0) + 1
+            distribution[sum_expr2] = distribution.get(sum_expr2, 0) + 1
+
+        return distribution
+
 if __name__ == '__main__':
     client = EnsemblClient()
     model = DataManager(client, "test_db1.db")
     #model.fetch_populations(pop_filter=None)
     #model.fetch_individuals()
     #model.fetch_individuals("CHB", "1000GENOMES:phase_3")
-    matrix = model.generate_inference_matrix("CHB")
-    np.set_printoptions(edgeitems = max(matrix.shape))
-    print(matrix)
+    #matrix = model.generate_inference_matrix("CHB")
+    #np.set_printoptions(edgeitems = max(matrix.shape))
+    #print(matrix)
     #model.fetch_reference_set()
     #model.fetch_reference_sequences("GRCh37.p13")
     #model.fetch_variants(17671934, 17675934, "22")
-
+    model.get_variation_distribution(17671934, 17675934, "CHB")
 
