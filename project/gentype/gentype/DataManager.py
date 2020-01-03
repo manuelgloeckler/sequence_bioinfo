@@ -227,7 +227,7 @@ class DataManager:
             self.db_connector.commit()
             if data['pageToken'] is None: break
 
-    def generate_inference_matrix(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3"):
+    def generate_inference_matrix(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
         """
         Generates the inference matrix for the section specified by start and end,
         based on the database and the given project and population.
@@ -244,6 +244,9 @@ class DataManager:
             project (str, optional): Name of the project for which to generate the matrix.
                 Defaults to 1000GENOMES:phase_3. Our algorithms does not support all 
                 naming conventions.
+            sum_allels (bool, optional): When True, expression of a variant will be collected per individual,
+                summing the expression per strand (if expressed on both -> 2, on one -> 1, on neither -> 0).
+                Defaults to False.
 
         Returns:
             inference matrix. Each row in the matrix represents an individual,
@@ -275,10 +278,18 @@ class DataManager:
                 number_individuals += 1
         
         # create matrix
-        inference_matrix = np.ndarray((number_individuals, number_variants))
-        for entry in variants_individuals:
-            variant, individual, expr1, expr2 = entry
-            inference_matrix[individuals_map[individual]][variants_map[variant]] = expr1 + expr2
+        if sum_allels:
+            inference_matrix = np.ndarray((number_individuals, number_variants))
+            for entry in variants_individuals:
+                variant, individual, expr1, expr2 = entry
+                inference_matrix[individuals_map[individual]][variants_map[variant]] = expr1 + expr2
+        else:
+            inference_matrix = np.ndarray((2 * number_individuals, number_variants)) 
+            for entry in variants_individuals:
+                variant, individual, expr1, expr2 = entry
+                inference_matrix[2 * individuals_map[individual]][variants_map[variant]] = expr1
+                inference_matrix[2 * individuals_map[individual] + 1][variants_map[variant]] = expr2
+
         
         return inference_matrix
 
