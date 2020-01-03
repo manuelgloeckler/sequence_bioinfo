@@ -23,14 +23,20 @@ def fetch_variants(chromosome,
                 pageSize = 10,
                 variantSetId = 3, 
                 referenceName = 22):
-    decoded = _fetch_variants_worker(chromosome, start, end, samples, pageSize, variantSetId, referenceName, None)
-    variants = [decoded["variants"]]
-    nextPage = decoded["nextPageToken"]
 
-    while(nextPage != None):
+    variants = []
+    nextPage = None
+    i = 0
+    while True:
         decoded = _fetch_variants_worker(chromosome, start, end, samples, pageSize, variantSetId, referenceName, nextPage) 
         variants.extend(decoded["variants"])
         nextPage = decoded["nextPageToken"]
+        i+=pageSize
+        print("Fetched " + str(i) + " Variants")
+
+        if nextPage == None:
+            break
+
 
     return variants
 

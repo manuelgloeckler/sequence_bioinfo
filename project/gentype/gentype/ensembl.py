@@ -1,6 +1,7 @@
 import warnings
 import pickle
-from .fetch_ensembl import *
+import numpy as np
+from .fetch_ensembl import fetch_populations, fetch_samples, fetch_sequence_by_id, fetch_sequence_by_region, fetch_variants
 
 
 class Ensembl():
@@ -19,7 +20,7 @@ class Ensembl():
 
     """ Save state of the collector """
     def save(self, path):
-        with  open(path, 'w') as file1: 
+        with  open(path, 'wb') as file1: 
             pickle.dump(self, file1)
 
     """ Static Function to load a state """
@@ -92,10 +93,19 @@ class Ensembl():
 
     """ Returns Variants from a genomic region of definied samples """
     def get_variants(self, chromosome, start, end, samples):
-        key = (chromosome, start, end, samples)
+        key = (chromosome, start, end, tuple(samples))
+        res = []
+        # TODO not working check by value
         if not key in self.fetched_variants:
-            self.fetched_variants[key] = list(map(lambda x: Variant(x),fetch_variants(chromosome, start, end, samples)))
-        
+            vars = fetch_variants(chromosome, start, end, tuple(samples))
+            for var1 in vars:
+                if isinstance(var1, list):
+                    for var2 in var1:
+                        res += [Variant(var2)]
+                else:
+                    res += [Variant(var1)]
+
+            self.fetched_variants[key] = res
         return self.fetched_variants[key]
         
     """ Returns a sequence by id"""
@@ -109,21 +119,42 @@ class Ensembl():
     # TODO add sequence by region and so one...
 
 
+def generate_X_matrix(individuals, type = "allele"):
+
+    X_matrix = []
+    for ind in individuals:
+        if type == "allele":
+            X_matrix.append(ind.allele)
+        elif type == "genotype":
+            X_matrix.append(ind.genotype)
+        else:
+            print("Unknown type")
+            return
+    
+    return np.array(X_matrix)
+        
+
 class Individual:
-    def __init__(id, population, variants = []):
+    def __init__(self, id, population, variants = []):
         self.id = id
         self.population = population
         self.variants = variants
-        self.allele = list()
-        self.genotype = list()
+        self.allele = np.array([])
+        self.genotype = np.array([])
+        
+        allele1 = np.zeros(len(variants))
+        allele2 = np.zeros(len(variants))
 
-    def generate_allele(variants):
-        pass
+        for i, var in enumerate(self.variants):
+            allele1[i] = var.genotypes[self.id][0]
+            allele2[i] = var.genotypes[self.id][1]
 
-    def generate_genotype(variants):
-        pass
+        self.allele = np.stack((allele1, allele2), axis = 0) 
+        self.genotype = allele1 + allele2
 
 
+
+            
 
 
 class Variant():
@@ -144,6 +175,13 @@ class Variant():
                 self.calls = value
             else:
                 self.INFO[key] = value
+
+        self.genotypes = dict()
+        for call in self.calls:
+            sample = call["callSetName"]
+            genotype = call["genotype"]
+            self.genotypes[sample] = tuple(genotype)
+
 
     def __str__(self):
         var = self.id[0] + ":" + str(self.start) + "..." + str(self.end) + ":" + self.referenceBases + "|"
