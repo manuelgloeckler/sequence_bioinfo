@@ -141,7 +141,7 @@ class PiCollapsedNonparametricGibbsSampler:
 
         # Start:
         i = 1
-        while i <= num_burn_in_steps or (stop_at_conv and not self._(delta=delta)) and i <= num_burn_in_steps + num_steps:
+        while i <= num_burn_in_steps or (stop_at_conv and not self._isConverged(delta=delta)) and i <= num_burn_in_steps + num_steps:
             self._sample_Z(X, alpha, gamma)
             self._sample_theta()
             self._print_status(X, i, report_status=report_status)
