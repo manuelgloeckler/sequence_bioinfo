@@ -210,7 +210,7 @@ class DataManager:
             answer = self.client.perform_rest_action(ext, headers, data = data)
             data['pageToken'] = answer['nextPageToken']
             for variant in answer['variants']:
-                variant_info = (variant['id'], variant['updated'], variant['created'], variant['start'], variant['end'], variant['referenceName'], str(variant['referenceBases']), variant['variantSetId'], variant['names'][0], "".join(variant["alternateBases"]))
+                variant_info = (variant['id'], variant['updated'], variant['created'], variant['start'], variant['end'], variant['referenceName'], str(variant['referenceBases']), variant['variantSetId'], variant['names'][0], str(variant["alternateBases"]))
                 try:
                     self.db_cursor.execute("INSERT INTO variants(id, updated, created, start, end, referenceName, referenceBases, variantSetId, name, alternateBases) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", variant_info)
                 except sqlite3.IntegrityError as e:
@@ -218,6 +218,7 @@ class DataManager:
                 try:
                     def individual_variant_generator():
                         for call in variant["calls"]:
+                            if len(call['genotype']) == 1: call['genotype'].append(None) # X and Y chromosomes may only occur once
                             yield (variant['id'], call['callSetName'], call['genotype'][0], call['genotype'][1])
                     self.db_cursor.executemany("INSERT INTO individuals_variants(variant, individual, expression1, expression2) VALUES (?, ?, ?, ?)", individual_variant_generator())
                 except sqlite3.IntegrityError as e:
@@ -227,7 +228,7 @@ class DataManager:
             self.db_connector.commit()
             if data['pageToken'] is None: break
 
-    def generate_inference_matrix(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
+    def generate_inference_matrix(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
         """
         Generates the inference matrix for the section specified by start and end,
         based on the database and the given project and population.
@@ -259,13 +260,19 @@ class DataManager:
         """
         if end is None: end = sys.maxsize
         population = "{}:{}".format(project, population)
+        if reference_name is None:
+            reference_condition = ""
+            sql_args = (population, start, end)
+        else:
+            reference_condition = " AND referenceName = ?"
+            sql_args = (population, start, end, reference_name)
         variants_individuals = self.db_cursor.execute("""
         SELECT variant, IV.individual, expression1, expression2 
         FROM individuals_variants IV 
         JOIN individuals_populations IP ON IV.individual = IP.individual
         JOIN variants V ON IV.variant = V.id
-        WHERE population = ? AND start >= ? AND end < ?;
-        """, (population, start, end))
+        WHERE population = ? AND start >= ? AND end < ?{};
+        """.format(reference_condition), sql_args)
 
         # setup map to numerical values
         variants_individuals = list(variants_individuals) #make the iterable permanent
