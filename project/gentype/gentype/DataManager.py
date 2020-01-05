@@ -236,10 +236,12 @@ class DataManager:
         Each row in the matrix represents an individual, each column a variant.
 
         Args:
-            start (int, optional): Begining (inclusive) of the section for which to consider variants.
+            start (int, optional): Beginning (inclusive) of the section for which to consider variants.
                 Defaults to 0.
             end (int, optional): End (exclusive) of the section for which to consider variants.
                 Defaults to sys.maxsize.
+            reference_name (str, optional): Name of the reference sequence the variants should belong to.
+                If None is given it is assumed all variants in the DB belong to the same reference sequence.
             population (str, optional): Name of the population for which to
                 generate the matrix. Defaults to ALL.
             project (str, optional): Name of the project for which to generate the matrix.
