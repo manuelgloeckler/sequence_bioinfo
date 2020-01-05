@@ -231,7 +231,7 @@ class DataManager:
     def generate_inference_matrix(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
         """
         Generates the inference matrix for the section specified by start and end,
-        based on the database and the given reference_sequence (chromosome), project and population.
+        based on the database and the given reference sequence (chromosome), project and population.
         Make sure to have fetched the variants and individuals beforehand.
         Each row in the matrix represents an individual, each column a variant.
 
