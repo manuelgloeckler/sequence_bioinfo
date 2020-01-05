@@ -251,6 +251,11 @@ class DataManager:
         Returns:
             inference matrix. Each row in the matrix represents an individual,
                 each column a variant.
+            individuals map. Maps each individual name to the corresponding row 
+                in the inference matrix.
+            variants map. Maps each variant to the corresponding column
+                in the inference matrix.
+
         """
         if end is None: end = sys.maxsize
         population = "{}:{}".format(project, population)
@@ -291,7 +296,7 @@ class DataManager:
                 inference_matrix[2 * individuals_map[individual] + 1][variants_map[variant]] = expr2
 
         
-        return inference_matrix
+        return inference_matrix, individuals_map, variants_map
 
     def get_variation_distribution(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3"):
         """
