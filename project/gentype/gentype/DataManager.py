@@ -188,10 +188,10 @@ class DataManager:
                 
         self.db_connector.commit()
 
-    def fetch_variants(self, start, end, reference_name, variant_set_id = 3):
+    def fetch_variants(self, start, end, reference_name, variant_set_id = 1):
         """
         Sends a request for all variants contained in the reference sequence (identified by reference_name) from start to end 
-        and part of the variant set (identified by variantSetId, always using 3 seems sufficient) in Ensembl. 
+        and part of the variant set (identified by variantSetId, always using 1 seems sufficient) in Ensembl. 
         The result will be written to the local database.
 
         Args:

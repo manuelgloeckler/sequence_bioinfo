@@ -19,7 +19,7 @@ except ImportError:
     from urllib2 import urlopen, Request, HTTPError
 
 class EnsemblClient(object):
-    def __init__(self, server='https://grch37.rest.ensembl.org', reqs_per_sec=15):
+    def __init__(self, server='https://rest.ensembl.org', reqs_per_sec=15):
         self.server = server
         self.reqs_per_sec = reqs_per_sec
         self.req_count = 0
