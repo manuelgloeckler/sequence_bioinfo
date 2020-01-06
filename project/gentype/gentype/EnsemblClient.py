@@ -81,7 +81,7 @@ class EnsemblClient(object):
 
 
 def run(species, symbol):
-    client = EnsemblRestClient()
+    client = EnsemblClient()
     #data = client.perform_rest_action('/variation/human/rs56116432', params = {'genotypes' : 1})
     #print(data)
     variants = client.get_variants(species, symbol)

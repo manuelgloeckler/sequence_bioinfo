@@ -178,11 +178,3 @@ def ensure_individuals_variants_table(cursor):
     except sqlite3.OperationalError as e:
         logger.warning("Creating individuals_variants table failed with: '{}'. Trying to continue anyways.".format(e))
 
-
-
-if __name__ == "__main__":
-    connector = sqlite3.connect("potato2.db")
-    cursor = connector.cursor()
-    ensure_samples_tables(cursor)
-    connector.commit()
-    connector.close()

@@ -176,7 +176,7 @@ class DataManager:
                     yield (sequence['id'], sequence['isPrimary'] == 'true', sequence['sourceURI'], sequence['name'], sequence['isDerived'] == 'true', sequence['length'], sequence['ncbiTaxonId'])
             if sqlite3.sqlite_version > "3.24":
                 try:
-                    self.db_cursor.executemany("INSERT INTO reference_sequences(id, isPrimary, sourceURI, name, isDerived, length, ncbiTaxonId) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING", population_generator())
+                    self.db_cursor.executemany("INSERT INTO reference_sequences(id, isPrimary, sourceURI, name, isDerived, length, ncbiTaxonId) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING", sequence_generator())
                 except sqlite3.OperationalError as e:
                     logger.warning("Updating reference_sequences table failed with error: '{}'. Maybe try updating your SQLite Version.".format(e))
             else:
@@ -226,6 +226,21 @@ class DataManager:
                 
             self.db_connector.commit()
             if data['pageToken'] is None: break
+
+    def get_individuals(self):
+        individuals = self.db_cursor.execute("""
+        SELECT name FROM 'individuals'
+        """)
+
+        return sorted(list(map(lambda x: x[0], individuals)))
+
+    def get_populations(self):
+        populations = self.db_cursor.execute("""
+        SELECT name FROM 'populations'
+        """)
+
+        return sorted(list(map(lambda x: x[0][:-4], populations)))
+
 
     def generate_inference_matrix(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
         """

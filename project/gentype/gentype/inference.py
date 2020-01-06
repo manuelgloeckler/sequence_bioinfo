@@ -215,13 +215,13 @@ class PiCollapsedNonparametricGibbsSampler:
             p_zn_Zn_unseen = alpha/(len(X)-1+alpha)
             logpx_n_unseen = self._logpx_n_unseen[n]
 
-            p_zn_seen = p_zn_Zn_seen * np.exp(logp_xn_theta_seen)
-            p_zn_unseen = p_zn_Zn_unseen * np.exp(logpx_n_unseen)
+            p_zn_seen = p_zn_Zn_seen * np.exp(np.array(logp_xn_theta_seen, dtype = np.longfloat))
+            p_zn_unseen = p_zn_Zn_unseen * np.exp(np.array(logpx_n_unseen,dtype = np.longfloat))
 
-            p_zn = np.append(p_zn_seen, p_zn_unseen)
+            p_zn = np.append(p_zn_seen, p_zn_unseen) 
             p_zn /= np.sum(p_zn, dtype=np.longfloat)
-
-            new_z = np.random.choice(range(self.K_seen + 1), p=p_zn)
+            
+            new_z = np.random.choice(range(self.K_seen + 1), p=np.array(p_zn,dtype = np.float64))
 
             # Update counting variables and differentiate new/old cluster
             self._update_counts(new_z, z_old, X[n], gamma)
