@@ -206,7 +206,7 @@ class DataManager:
         next_page = 0
         data = {"end" : end, "referenceName" : reference_name, "start" : start, "variantSetId" : variant_set_id, "pageSize" : 10}
         while True:
-            logger.info(data.get('pageToken', ""))
+            logger.warning(data.get('pageToken', ""))
             answer = self.client.perform_rest_action(ext, headers, data = data)
             data['pageToken'] = answer['nextPageToken']
             for variant in answer['variants']:
@@ -227,6 +227,53 @@ class DataManager:
                 
             self.db_connector.commit()
             if data['pageToken'] is None: break
+
+
+    def fetch_phenotypes(self, start, end, reference_name, species = "homo_sapiens", feature_type = "Variation"):
+        """
+        Fetches all phenotype information in the specified region (via start & end) 
+        on the given reference sequence (chromosome) for the given species (currently only homo_sapiens is sensible).
+
+        Args:
+            start (int): Start of the region for which to fetch phenotype information.
+            end (int) : End of the region for which to fetch phenotype information.
+            reference_name (str): Name of the reference sequence for which to fetch the phenotype information.
+            species (str, optional): Name of the species for which to fetch the phenotype information.
+                Defaults to 'homo_sapiens' which currently is the only sensible choice.
+            feature_type (str, optional): Options are: Variation, StructuralVariation, Gene, QTL.
+        """
+        region = "{}:{}-{}".format(reference_name, start, end)
+        ext = "/phenotype/region/{}/{}".format(species, region)
+        params = {"feature_type" : feature_type}
+        phenotypes = self.client.perform_rest_action(ext, params = params)
+        for phenotype in phenotypes:
+            ensembl_id = phenotype["id"]
+            logger.warning(ensembl_id)
+            for association in phenotype["phenotype_associations"]:
+                location_split = association["location"].split(":")[1].split("-")
+                start = location_split[0]
+                end = location_split[1]
+                attributes = association.get('attributes', {})
+                p_value = attributes.get("p_value", None)
+                associated_gene = attributes.get("associated_gene", None)
+                risk_allele = attributes.get("risk_allele", None)
+                external_reference = attributes.get("external_reference", None)
+                phenotype_info = (ensembl_id, start, end, reference_name, association["description"], association["source"], p_value, associated_gene, risk_allele, external_reference)
+                try:
+                    self.db_cursor.execute("INSERT INTO phenotypes(ensembl_id, start, end, referenceName, description, source, p_value, associated_gene, risk_allele, external_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", phenotype_info)
+                except sqlite3.IntegrityError as e:
+                    logger.info("Tried to insert {} into variants table, but got error: {}.".format(phenotype_info, e))
+               
+        self.db_connector.commit()
+
+
+    def get_associated_phenotypes(self, start, end):
+        return list(self.db_cursor.execute("""
+        SELECT *
+        FROM phenotypes
+        WHERE start >= ? and end <= ?;
+        """, (start, end)))
+        
 
     def generate_inference_matrix(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
         """
@@ -357,6 +404,8 @@ if __name__ == '__main__':
     #print(matrix)
     #model.fetch_reference_set()
     #model.fetch_reference_sequences("GRCh37.p13")
-    #model.fetch_variants(17671934, 17675934, "22")
-    model.get_variation_distribution(17671934, 17675934, "CHB")
+    #model.fetch_variants(17680350, 17690350, "22")
+    #model.get_variation_distribution(17671934, 17675934, "CHB")
+    #model.fetch_phenotypes(17671934, 17701934, "22")
+    print(model.get_associated_phenotypes(17671934, 17701934))
 

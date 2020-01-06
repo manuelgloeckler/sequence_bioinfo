@@ -17,6 +17,8 @@ def ensure_tables(cursor):
     ensure_reference_sequences_table(cursor)
     ensure_variants_table(cursor)
     ensure_individuals_variants_table(cursor)
+    ensure_phenotypes_table(cursor)
+
 
     
 def ensure_individuals_table(cursor):
@@ -177,6 +179,35 @@ def ensure_individuals_variants_table(cursor):
         """)
     except sqlite3.OperationalError as e:
         logger.warning("Creating individuals_variants table failed with: '{}'. Trying to continue anyways.".format(e))
+
+def ensure_phenotypes_table(cursor):
+    """
+    Esures that the phenotypes table exist in the sqlite database.
+    It has the entries (ensembl_id, start, end, referenceName, description, source, p_value, associated_gene, risk_allele, external_reference).
+    Be aware that ensembl_id is not the actual id but identifies the location.
+    
+    If it doesn't exist it will be created.
+
+    Args:
+        cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
+    """
+    try:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS phenotypes (
+            ensembl_id INTEGER,
+            start INTEGER,
+            end INTEGER,
+            referenceName VARCHAR(64),
+            description VARCHAR(64),
+            source VARCHAR(128),
+            p_value FLOAT,
+            associated_gene VARCHAR(64),
+            risk_allele VARCHAR(32),
+            external_reference VARCHAR(64)
+        )
+        """)
+    except sqlite3.OperationalError as e:
+        logger.warning("Creating phenotypes table failed with: '{}'. Trying to continue anyways.".format(e))
 
 
 
