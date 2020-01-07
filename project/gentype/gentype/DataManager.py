@@ -36,7 +36,7 @@ class DataManager:
         pass
 
 
-    def fetch_individuals(self, pop = "ALL", project = "1000GENOMES:phase_3"):
+    def fetch_individuals(self, pop = "ALL", project = "1000GENOMES:phase_3", report_progress = False):
         """
         Send a request to the ensembl database, requesting all individuals for the given population and project. 
         Updates the database.
@@ -44,6 +44,7 @@ class DataManager:
         Args:
             population (str): Name of the population the individuals should be returned for.
             project (str): Name of the project to use (default will be correct in almost all cases).
+            report_progress (bool): If set to true fetching progress will be printed out.
 
         """
 
@@ -101,9 +102,10 @@ class DataManager:
                         logger.info("Tried to insert {} into individuals_populations table, but got error: {}.".format(individual_population_info, e))
 
             self.db_connector.commit()
+            if report_progress: print("Finished fetching individuals for population: {}.".format(population.get("description", "unknown")))
 
 
-    def fetch_populations(self, pop_filter = "LD", species = "homo_sapiens"):
+    def fetch_populations(self, pop_filter = "LD", species = "homo_sapiens", report_progress = False):
         """
         Sends a request for the populations specified by given species and filter to the ensembl database.
         The result will be written to the local database.
@@ -111,6 +113,7 @@ class DataManager:
         Args:
             pop_filter (str): TODO: not sure what this does.
             species (str): Species the populations should belong to.
+            report_progress (bool): If set to true fetching progress will be printed out.
 
         """
         ext = "/info/variation/populations/" + species
@@ -134,11 +137,15 @@ class DataManager:
                     logger.info("Tried to insert {} into populations table, but got error: {}.".format(population_info, e))
             
         self.db_connector.commit()
+        if report_progress: print("Finished fetching populations for species: {}.".format(species))
 
-    def fetch_reference_set(self):
+    def fetch_reference_set(self, report_progress = False):
         """
         Sends a request for all reference sets in Ensembl. These sets are associated with reference sequences and are needed to access them.
         The result will be written to the local database.
+
+        Args:
+            report_progress (bool): If set to true fetching progress will be printed out.
 
         """
         ext = "/ga4gh/referencesets/search"
@@ -153,14 +160,16 @@ class DataManager:
                 logger.info("Tried to insert {} into referenceSets table, but got error: {}.".format(referenceSet_info, e))
                 
         self.db_connector.commit()
+        if report_progress: print("Finished fetching reference set.")
 
-    def fetch_reference_sequences(self, set_id):
+    def fetch_reference_sequences(self, set_id, report_progress = False):
         """
         Sends a request for all reference sequences in Ensembl. These sequences serve as basis for variants.
         The result will be written to the local database.
 
         Args:
             set_id (str): Id of the reference set for which to request all associated reference sequences.
+            report_progress (bool): If set to true fetching progress will be printed out.
 
         """
         ext = "/ga4gh/references/search"
@@ -187,8 +196,9 @@ class DataManager:
                         logger.info("Tried to insert {} into reference_sequences table, but got error: {}.".format(reference_sequence, e))
                 
         self.db_connector.commit()
+        if report_progress: print("Finished fetching reference sequences for set: {}.".format(set_id))
 
-    def fetch_variants(self, start, end, reference_name, variant_set_id = 1):
+    def fetch_variants(self, start, end, reference_name, variant_set_id = 1, report_progress = False):
         """
         Sends a request for all variants contained in the reference sequence (identified by reference_name) from start to end 
         and part of the variant set (identified by variantSetId, always using 1 seems sufficient) in Ensembl. 
@@ -199,6 +209,7 @@ class DataManager:
             end (int): End position, 0 indexed, excluded.
             reference_name (str): Name of the reference sequence for which to get the variant.
             variantSetId (int, optional): Id of the variant set from which to get the variant. 
+            report_progress (bool): If set to true fetching progress will be printed out.
 
         """
         ext = "/ga4gh/variants/search"
@@ -227,10 +238,11 @@ class DataManager:
                     
                 
             self.db_connector.commit()
+            if report_progress: print("Finished fetching 10 variants next is {}.".format(data['pageToken']))
             if data['pageToken'] is None: break
 
 
-    def fetch_phenotypes(self, start, end, reference_name, species = "homo_sapiens", feature_type = "Variation"):
+    def fetch_phenotypes(self, start, end, reference_name, species = "homo_sapiens", feature_type = "Variation", report_progress = False):
         """
         Fetches all phenotype information in the specified region (via start & end) 
         on the given reference sequence (chromosome) for the given species (currently only homo_sapiens is sensible).
@@ -241,6 +253,7 @@ class DataManager:
             species (str, optional): Name of the species for which to fetch the phenotype information.
                 Defaults to 'homo_sapiens' which currently is the only sensible choice.
             feature_type (str, optional): Options are: Variation, StructuralVariation, Gene, QTL.
+            report_progress (bool): If set to true fetching progress will be printed out.
         """
         region = "{}:{}-{}".format(reference_name, start, end)
         ext = "/phenotype/region/{}/{}".format(species, region)
@@ -248,7 +261,6 @@ class DataManager:
         phenotypes = self.client.perform_rest_action(ext, params = params)
         for phenotype in phenotypes:
             ensembl_id = phenotype["id"]
-            logger.warning(ensembl_id)
             for association in phenotype["phenotype_associations"]:
                 location_split = association["location"].split(":")[1].split("-")
                 start = location_split[0]
@@ -264,18 +276,30 @@ class DataManager:
                 except sqlite3.IntegrityError as e:
                     logger.info("Tried to insert {} into variants table, but got error: {}.".format(phenotype_info, e))
                
+        if report_progress: print("Finished fetching phenotypes from {} to {} for sequence {}.".format(start, end, reference_name))
         self.db_connector.commit()
 
-    def fetch_all(self, start, end, reference_set, project="1000GENOMES:phase_3"):
-        self.fetch_reference_set()
-        self.fetch_reference_sequences("GRCh38")
-        self.fetch_populations(pop_filter = None)
+    def fetch_all(self, start, end, reference_sequence, project="1000GENOMES:phase_3", **kwargs):
+        """
+        Fetches all information required to construct the model for the given section specified by
+        chromosome, start and end.
+
+        Args:
+            start (int): Starting position of the section for which to fetch the information.
+            end (int): Ending position of the section for which to fetch the information.
+            reference_sequence (str): Name of the reference sequence (usuallly name of the chromosome)
+                for which to fetch the information.
+            kwargs: Any additional keyword arguments will be passed onto the specific fetch operations.
+        """
+        self.fetch_reference_set(**kwargs)
+        self.fetch_reference_sequences("GRCh38", **kwargs)
+        self.fetch_populations(pop_filter = None, **kwargs)
 
         for pop in self.get_populations(project=project):
-            self.fetch_individuals(pop, project) 
+            self.fetch_individuals(pop, project, **kwargs) 
 
-        self.fetch_variants(start, end, reference_set)
-        self.fetch_phenotypes(start, end, reference_set)
+        self.fetch_variants(start, end, reference_sequence, **kwargs)
+        self.fetch_phenotypes(start, end, reference_sequence, **kwargs)
 
 
     def get_associated_phenotypes(self, start, end):
