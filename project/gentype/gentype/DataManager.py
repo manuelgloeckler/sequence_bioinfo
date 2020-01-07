@@ -210,7 +210,7 @@ class DataManager:
             answer = self.client.perform_rest_action(ext, headers, data = data)
             data['pageToken'] = answer['nextPageToken']
             for variant in answer['variants']:
-                variant_info = (variant['id'], variant['updated'], variant['created'], variant['start'], variant['end'], variant['referenceName'], str(variant['referenceBases']), variant['variantSetId'], variant['names'][0], "".join(variant["alternateBases"]))
+                variant_info = (variant['id'], variant['updated'], variant['created'], variant['start'], variant['end'], variant['referenceName'], str(variant['referenceBases']), variant['variantSetId'], variant['names'][0], str(variant["alternateBases"]))
                 try:
                     self.db_cursor.execute("INSERT INTO variants(id, updated, created, start, end, referenceName, referenceBases, variantSetId, name, alternateBases) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", variant_info)
                 except sqlite3.IntegrityError as e:
@@ -218,7 +218,8 @@ class DataManager:
                 try:
                     def individual_variant_generator():
                         for call in variant["calls"]:
-                            yield (variant['id'], call['callSetName'], call['genotype'][0], call['genotype'][1])
+                            if len(call['genotype'] != 2): call['genotype'].append(None)
+                            yield (variant['id'], call['callSetName'], 0 != call['genotype'][0], call['genotype'][1])
                     self.db_cursor.executemany("INSERT INTO individuals_variants(variant, individual, expression1, expression2) VALUES (?, ?, ?, ?)", individual_variant_generator())
                 except sqlite3.IntegrityError as e:
                     logger.info("Tried to insert {} into individuals_variants table, but got error: {}. Make sure to fetch individuals first.".format(variant["calls"], e))
