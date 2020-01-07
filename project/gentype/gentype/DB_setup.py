@@ -6,7 +6,6 @@ def ensure_tables(cursor):
     """
     Esures that all neccesary tables exist in the sqlite database.
     If they don't they are created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -17,6 +16,8 @@ def ensure_tables(cursor):
     ensure_reference_sequences_table(cursor)
     ensure_variants_table(cursor)
     ensure_individuals_variants_table(cursor)
+    ensure_phenotypes_table(cursor)
+
 
     
 def ensure_individuals_table(cursor):
@@ -24,7 +25,6 @@ def ensure_individuals_table(cursor):
     Esures that the individuals table exist in the sqlite database.
     It has the entries (name, gender).
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -43,7 +43,6 @@ def ensure_populations_table(cursor):
     Esures that the populations table exist in the sqlite database.
     It has the entries (name, size, description).
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -63,7 +62,6 @@ def ensure_individuals_populations_table(cursor):
     Esures that the individuals_populations table exist in the sqlite database.
     It has the entries (individual -> individuals, population -> populations).
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -85,7 +83,6 @@ def ensure_referenceSets_table(cursor):
     Esures that the referenceSets table exist in the sqlite database.
     It has the entries (id, description, sourceURI, name, ncbiTaxonId).
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -107,7 +104,6 @@ def ensure_reference_sequences_table(cursor):
     Esures that the reference_sequences table exist in the sqlite database.
     It has the entries (id, isPrimary, sourceURI, name, isDerived, length, ncbiTaxonId).
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -131,7 +127,6 @@ def ensure_variants_table(cursor):
     Esures that the variants table exist in the sqlite database.
     It has the entries (id, updated, created, start, end, referenceName, referenceBases, variantSetId, name, alternateBases).
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -159,7 +154,6 @@ def ensure_individuals_variants_table(cursor):
     It has the entries (variant, individual, expression1, expression2).
     
     If it doesn't exist it will be created.
-
     Args:
         cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
     """
@@ -177,4 +171,32 @@ def ensure_individuals_variants_table(cursor):
         """)
     except sqlite3.OperationalError as e:
         logger.warning("Creating individuals_variants table failed with: '{}'. Trying to continue anyways.".format(e))
+
+def ensure_phenotypes_table(cursor):
+    """
+    Esures that the phenotypes table exist in the sqlite database.
+    It has the entries (ensembl_id, start, end, referenceName, description, source, p_value, associated_gene, risk_allele, external_reference).
+    Be aware that ensembl_id is not the actual id but identifies the location.
+    
+    If it doesn't exist it will be created.
+    Args:
+        cursor (sqlite3.Cursor): Cursor to the database which is to be checked.
+    """
+    try:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS phenotypes (
+            ensembl_id INTEGER,
+            start INTEGER,
+            end INTEGER,
+            referenceName VARCHAR(64),
+            description VARCHAR(64),
+            source VARCHAR(128),
+            p_value FLOAT,
+            associated_gene VARCHAR(64),
+            risk_allele VARCHAR(32),
+            external_reference VARCHAR(64)
+        )
+        """)
+    except sqlite3.OperationalError as e:
+        logger.warning("Creating phenotypes table failed with: '{}'. Trying to continue anyways.".format(e))
 

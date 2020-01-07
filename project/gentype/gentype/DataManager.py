@@ -227,6 +227,62 @@ class DataManager:
             self.db_connector.commit()
             if data['pageToken'] is None: break
 
+
+    def fetch_phenotypes(self, start, end, reference_name, species = "homo_sapiens", feature_type = "Variation"):
+        """
+        Fetches all phenotype information in the specified region (via start & end) 
+        on the given reference sequence (chromosome) for the given species (currently only homo_sapiens is sensible).
+        Args:
+            start (int): Start of the region for which to fetch phenotype information.
+            end (int) : End of the region for which to fetch phenotype information.
+            reference_name (str): Name of the reference sequence for which to fetch the phenotype information.
+            species (str, optional): Name of the species for which to fetch the phenotype information.
+                Defaults to 'homo_sapiens' which currently is the only sensible choice.
+            feature_type (str, optional): Options are: Variation, StructuralVariation, Gene, QTL.
+        """
+        region = "{}:{}-{}".format(reference_name, start, end)
+        ext = "/phenotype/region/{}/{}".format(species, region)
+        params = {"feature_type" : feature_type}
+        phenotypes = self.client.perform_rest_action(ext, params = params)
+        for phenotype in phenotypes:
+            ensembl_id = phenotype["id"]
+            logger.warning(ensembl_id)
+            for association in phenotype["phenotype_associations"]:
+                location_split = association["location"].split(":")[1].split("-")
+                start = location_split[0]
+                end = location_split[1]
+                attributes = association.get('attributes', {})
+                p_value = attributes.get("p_value", None)
+                associated_gene = attributes.get("associated_gene", None)
+                risk_allele = attributes.get("risk_allele", None)
+                external_reference = attributes.get("external_reference", None)
+                phenotype_info = (ensembl_id, start, end, reference_name, association["description"], association["source"], p_value, associated_gene, risk_allele, external_reference)
+                try:
+                    self.db_cursor.execute("INSERT INTO phenotypes(ensembl_id, start, end, referenceName, description, source, p_value, associated_gene, risk_allele, external_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", phenotype_info)
+                except sqlite3.IntegrityError as e:
+                    logger.info("Tried to insert {} into variants table, but got error: {}.".format(phenotype_info, e))
+               
+        self.db_connector.commit()
+
+    def fetch_all(self, start, end, reference_set, project="1000GENOMES:phase_3"):
+        self.fetch_reference_set()
+        self.fetch_reference_sequences("GRCh38")
+        self.fetch_populations(pop_filter = None)
+
+        for pop in self.get_populations(project=project):
+            self.fetch_individuals(pop, project) 
+
+        self.fetch_variants(start, end, reference_set)
+        self.fetch_phenotypes(start, end, reference_set)
+
+
+    def get_associated_phenotypes(self, start, end):
+        return list(self.db_cursor.execute("""
+        SELECT *
+        FROM phenotypes
+        WHERE start >= ? and end <= ?;
+        """, (start, end)))
+
     def get_individuals(self):
         individuals = self.db_cursor.execute("""
         SELECT name FROM 'individuals'
@@ -234,26 +290,45 @@ class DataManager:
 
         return sorted(list(map(lambda x: x[0], individuals)))
 
-    def get_populations(self):
+    def get_populations(self, project="1000GENOMES:phase_3"):
         populations = self.db_cursor.execute("""
         SELECT name FROM 'populations'
         """)
+        pop_name = []
+        for pop in populations:
+            name = pop[0]
+            if project in name:
+                pop_name.append(name.split(":")[-1])
 
-        return sorted(list(map(lambda x: x[0][:-4], populations)))
+        return sorted(pop_name)
+
+    def generate_individual_population_map(self):
+        ind_pop = self.db_cursor.execute("""
+        SELECT individual, population FROM 'individuals_populations'
+        """)
+        ind_pop_map = dict()
+        for ind, pop in ind_pop:
+            if ind not in ind_pop_map:
+                ind_pop_map[ind] = [pop.split(":")[-1]]
+            else:
+                ind_pop_map[ind] += [pop.split(":")[-1]]
+        return ind_pop_map
 
 
-    def generate_inference_matrix(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
+
+    def generate_inference_matrix(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
         """
         Generates the inference matrix for the section specified by start and end,
-        based on the database and the given project and population.
+        based on the database and the given reference sequence (chromosome), project and population.
         Make sure to have fetched the variants and individuals beforehand.
         Each row in the matrix represents an individual, each column a variant.
-
         Args:
-            start (int, optional): Begining (inclusive) of the section for which to consider variants.
+            start (int, optional): Beginning (inclusive) of the section for which to consider variants.
                 Defaults to 0.
             end (int, optional): End (exclusive) of the section for which to consider variants.
                 Defaults to sys.maxsize.
+            reference_name (str, optional): Name of the reference sequence the variants should belong to.
+                If None is given it is assumed all variants in the DB belong to the same reference sequence.
             population (str, optional): Name of the population for which to
                 generate the matrix. Defaults to ALL.
             project (str, optional): Name of the project for which to generate the matrix.
@@ -262,20 +337,29 @@ class DataManager:
             sum_allels (bool, optional): When True, expression of a variant will be collected per individual,
                 summing the expression per strand (if expressed on both -> 2, on one -> 1, on neither -> 0).
                 Defaults to False.
-
         Returns:
             inference matrix. Each row in the matrix represents an individual,
                 each column a variant.
+            individuals map. Maps each individual name to the corresponding row 
+                in the inference matrix.
+            variants map. Maps each variant to the corresponding column
+                in the inference matrix.
         """
         if end is None: end = sys.maxsize
         population = "{}:{}".format(project, population)
+        if reference_name is None:
+            reference_condition = ""
+            sql_args = (population, start, end)
+        else:
+            reference_condition = " AND referenceName = ?"
+            sql_args = (population, start, end, reference_name)
         variants_individuals = self.db_cursor.execute("""
         SELECT variant, IV.individual, expression1, expression2 
         FROM individuals_variants IV 
         JOIN individuals_populations IP ON IV.individual = IP.individual
         JOIN variants V ON IV.variant = V.id
-        WHERE population = ? AND start >= ? AND end < ?;
-        """, (population, start, end))
+        WHERE population = ? AND start >= ? AND end < ?{};
+        """.format(reference_condition), sql_args)
 
         # setup map to numerical values
         variants_individuals = list(variants_individuals) #make the iterable permanent
@@ -306,7 +390,7 @@ class DataManager:
                 inference_matrix[2 * individuals_map[individual] + 1][variants_map[variant]] = expr2
 
         
-        return inference_matrix
+        return inference_matrix, individuals_map, variants_map
 
     def get_variation_distribution(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3"):
         """
@@ -347,17 +431,5 @@ class DataManager:
 
         return distribution
 
-if __name__ == '__main__':
-    client = EnsemblClient()
-    model = DataManager(client, "test_db1.db")
-    #model.fetch_populations(pop_filter=None)
-    #model.fetch_individuals()
-    #model.fetch_individuals("CHB", "1000GENOMES:phase_3")
-    #matrix = model.generate_inference_matrix("CHB")
-    #np.set_printoptions(edgeitems = max(matrix.shape))
-    #print(matrix)
-    #model.fetch_reference_set()
-    #model.fetch_reference_sequences("GRCh37.p13")
-    #model.fetch_variants(17671934, 17675934, "22")
-    model.get_variation_distribution(17671934, 17675934, "CHB")
+
 

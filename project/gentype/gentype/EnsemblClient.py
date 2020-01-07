@@ -64,38 +64,3 @@ class EnsemblClient(object):
                 sys.stderr.write('Request failed for {0}: Status code: {1.code} Reason: {1.reason}\n'.format(endpoint, e))
            
         return data
-
-    def get_variants(self, species, symbol):
-        genes = self.perform_rest_action(
-            endpoint='/xrefs/symbol/{0}/{1}'.format(species, symbol), 
-            params={'object_type': 'gene'}
-        )
-        if genes:
-            stable_id = genes[0]['id']
-            variants = self.perform_rest_action(
-                '/overlap/id/{0}'.format(stable_id),
-                params={'feature': 'variation'}
-            )
-            return variants
-        return None
-
-
-def run(species, symbol):
-    client = EnsemblClient()
-    #data = client.perform_rest_action('/variation/human/rs56116432', params = {'genotypes' : 1})
-    #print(data)
-    variants = client.get_variants(species, symbol)
-    if variants:
-        for v in variants: #currently we only take the first 10 to save some time
-            if (v['id'] == 'rs56116432'): print("OI")
-            data = client.perform_rest_action('/variation/{}/{}'.format(species, v['id']), params = {'genotypes' : 1})
-            if data:
-                print(data['genotypes'])
-
-if __name__ == '__main__':
-    if len(sys.argv) == 3:
-        species, symbol = sys.argv[1:]
-    else:
-        species, symbol = 'human', 'ABO'
-
-    run(species, symbol)
