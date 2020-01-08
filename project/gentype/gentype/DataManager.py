@@ -1,5 +1,6 @@
 import pickle
 import sqlite3
+import ast
 import sys
 try:
     from .EnsemblClient import EnsemblClient
@@ -279,6 +280,23 @@ class DataManager:
         if report_progress: print("Finished fetching phenotypes from {} to {} for sequence {}.".format(start, end, reference_name))
         self.db_connector.commit()
 
+    def fetch_region(self, start, end, reference_name, species = "homo_sapiens"):
+        """
+        Fetches the region of the reference sequence specified by reference name, start and end.
+
+        Args:
+            start (int): Start of the region which to fetch.
+            end (int) : End of the region which to fetch.
+            reference_name (str): Name of the reference sequence which to fetch.
+            species (str, optional): Name of the species for which to fetch the sequence information.
+                Defaults to 'homo_sapiens' which currently is the only sensible choice.
+        """
+        region = "{}:{}-{}".format(reference_name, start, end)
+        ext = "/sequence/region/{}/{}".format(species, region)
+        region = self.client.perform_rest_action(ext)
+        #TODO: store to DB
+        return region
+
     def fetch_all(self, start, end, reference_sequence, project="1000GENOMES:phase_3", **kwargs):
         """
         Fetches all information required to construct the model for the given section specified by
@@ -506,6 +524,51 @@ class DataManager:
         """.format(reference_condition), sql_args)
         variant_ranges = set(variant_ranges)
         return variant_ranges
+
+    def get_variation_alternate(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3"):
+        """
+        Returns a dictionary mapping number of variants within the specified region 
+        to the number of strands with that number of variants.
+
+        Args:
+            start (int, optional): Begining (inclusive) of the section for which to consider variants.
+                Defaults to 0.
+            end (int, optional): End (exclusive) of the section for which to consider variants.
+                Defaults to sys.maxsize.
+            reference_name (str, optional): Name of the reference sequence the variants should belong to.
+                If None is given it is assumed all variants in the DB belong to the same reference sequence.
+            population (str, optional): Name of the population for which to
+                generate the distribution. Defaults to ALL.
+            project (str, optional): Name of the project for which to generate the distribution.
+                Defaults to 1000GENOMES:phase_3. Our algorithms does not support all 
+                naming conventions.
+
+        Returns:
+            Set containing tuples of form (variant_id, variant_start, variant_end).
+        """
+        if end is None: end = sys.maxsize
+        population = "{}:{}".format(project, population)
+        if reference_name is None:
+            reference_condition = ""
+            sql_args = (population, start, end)
+        else:
+            reference_condition = " AND referenceName = ?"
+            sql_args = (population, start, end, reference_name)
+            
+        #TODO: Could probably optimize the sql query
+        variant_bases = self.db_cursor.execute("""
+        SELECT V.id, V.alternateBases, V.start, V.end
+        FROM individuals_variants IV 
+        JOIN individuals_populations IP ON IV.individual = IP.individual
+        JOIN variants V ON IV.variant = V.id
+        WHERE population = ? AND start >= ? AND end < ?{};
+        """.format(reference_condition), sql_args)
+        variant_bases = set(variant_bases)
+        alternates_map = {}
+        for variant_base in variant_bases:
+            alternates_map[variant_base[0]] = (ast.literal_eval(variant_base[1]), variant_base[2], variant_base[3])
+        return alternates_map
+
 
 
 
