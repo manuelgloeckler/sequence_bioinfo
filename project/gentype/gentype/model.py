@@ -49,18 +49,18 @@ class CategoricalMM:
 
 class AlleleMM(CategoricalMM):
     """
-        Specialized catigorical mixture model which support drawing sets of variants.
+    Specialized catigorical mixture model which support drawing sets of variants.
 
-        Args:
-            Z (np.ndarray): Assignment for each individual to each respective cluster.
-            theta (iterable): Iterable containing the probabilities for each of the variants within the clusters.
-            inference_matrix (np.ndarray): Inference matrix which was used to construct the model from which the
-                parameters were derived.
-            variant_ranges ([(variant_id, variant_start, variant_end)]): List containing tuples assigning each
-                variant its start and end position within the reference sequence. If this is not given in the constructor
-                self.compute_variant_overlaps must be called before sampling.
-            variant_map ({variant_id : idx}): Dictionary mapping each variant id to its index in the inference matrix. 
-                If this is not given in the constructor self.compute_variant_overlaps must be called before sampling.
+    Args:
+        Z (np.ndarray): Assignment for each individual to each respective cluster.
+        theta (iterable): Iterable containing the probabilities for each of the variants within the clusters.
+        inference_matrix (np.ndarray): Inference matrix which was used to construct the model from which the
+            parameters were derived.
+        variant_ranges ([(variant_id, variant_start, variant_end)]): List containing tuples assigning each
+            variant its start and end position within the reference sequence. If this is not given in the constructor
+            self.compute_variant_overlaps must be called before sampling.
+        variant_map ({variant_id : idx}): Dictionary mapping each variant id to its index in the inference matrix. 
+            If this is not given in the constructor self.compute_variant_overlaps must be called before sampling.
     """
     def __init__(self, Z, theta, inference_matrix, variant_ranges = None, variant_map = None):
         pi = CategoricalMM.ML_est_pi(Z)
