@@ -230,7 +230,7 @@ class DataManager:
                     def individual_variant_generator():
                         for call in variant["calls"]:
                             if len(call['genotype']) != 2: call['genotype'].append(None)
-                            else: call['genotype'][1] = 0 != call['genotype']
+                            else: call['genotype'][1] = 0 != call['genotype'][1]
                             yield (variant['id'], call['callSetName'], 0 != call['genotype'][0], call['genotype'][1])
                     self.db_cursor.executemany("INSERT INTO individuals_variants(variant, individual, expression1, expression2) VALUES (?, ?, ?, ?)", individual_variant_generator())
                 except sqlite3.IntegrityError as e:
