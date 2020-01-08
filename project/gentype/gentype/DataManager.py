@@ -527,8 +527,7 @@ class DataManager:
 
     def get_variation_alternate(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3"):
         """
-        Returns a dictionary mapping number of variants within the specified region 
-        to the number of strands with that number of variants.
+        Returns a dictionary mapping variation ids to their alternate base, their start, and their end.
 
         Args:
             start (int, optional): Begining (inclusive) of the section for which to consider variants.
@@ -544,7 +543,7 @@ class DataManager:
                 naming conventions.
 
         Returns:
-            Set containing tuples of form (variant_id, variant_start, variant_end).
+            Dictionary mapping variant id to (alternate_base, start, end) of that variant.
         """
         if end is None: end = sys.maxsize
         population = "{}:{}".format(project, population)

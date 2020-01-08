@@ -1,7 +1,13 @@
 import numpy as np
 
 class CategoricalMM:
-    # Final Model class... TODO implement
+    """
+    General categorical mixture model.
+
+    Args:
+        pi (iterable): Iterable containing the probabilities that a cluster is chosen.
+        theta (iterable): Iterable containing the probabilities for each of the variants within the clusters.
+    """
     def __init__(self, pi, theta):
         self.pi = np.array(pi)
         self.theta = np.array(theta)
@@ -13,6 +19,14 @@ class CategoricalMM:
         return p
 
     def simple_sample(self, draws, replace = True):
+        """
+        Draws a given amount of samples from this model.
+
+        Args:
+            draws (int): Number of draws.
+            replace (bool, optional): If set to False draws will be done without replacement.
+                Defaults to True.
+        """
         k = np.random.choice(range(len(self.pi)), p = self.pi)
         theta = self.theta[k]
 
@@ -20,6 +34,12 @@ class CategoricalMM:
 
     @staticmethod
     def ML_est_pi(Z):
+        """
+        Compute pi (probabilites that a cluster is chosen) from the assignment of individuals to each cluster (Z).
+
+        Args:
+            Z (np.ndarray): Assignment for each individual to each respective cluster.
+        """
         K = np.max(Z)+1
         pi = np.array([np.sum(Z == k) for k in range(int(K))])
         pi = pi / pi.sum()
@@ -28,6 +48,20 @@ class CategoricalMM:
     
 
 class AlleleMM(CategoricalMM):
+    """
+        Specialized catigorical mixture model which support drawing sets of variants.
+
+        Args:
+            Z (np.ndarray): Assignment for each individual to each respective cluster.
+            theta (iterable): Iterable containing the probabilities for each of the variants within the clusters.
+            inference_matrix (np.ndarray): Inference matrix which was used to construct the model from which the
+                parameters were derived.
+            variant_ranges ([(variant_id, variant_start, variant_end)]): List containing tuples assigning each
+                variant its start and end position within the reference sequence. If this is not given in the constructor
+                self.compute_variant_overlaps must be called before sampling.
+            variant_map ({variant_id : idx}): Dictionary mapping each variant id to its index in the inference matrix. 
+                If this is not given in the constructor self.compute_variant_overlaps must be called before sampling.
+    """
     def __init__(self, Z, theta, inference_matrix, variant_ranges = None, variant_map = None):
         pi = CategoricalMM.ML_est_pi(Z)
         super().__init__(pi, theta)
@@ -41,6 +75,18 @@ class AlleleMM(CategoricalMM):
 
 
     def sample_variations(self, cluster = None):
+        """
+        Samples a set of variations from this model. Returns them as a bit vector (use the variant_map 
+        from the inference_matrix creation to convert them to actual variant ids).
+
+        Args:
+            cluster (int, optional): Index of the cluster to sample from. This should only provided if you want to 
+                poll from a specific cluster. If not given will sample properly from the entire model.
+
+        Returns:
+            Bitvector containing a 1 if the variation is expressed and 0 if not (use the variant_map 
+                from the inference_matrix creation to convert them to actual variant ids).
+        """
         if cluster is None:
             k = np.random.choice(range(len(self.pi)), p = self.pi)
         else:
@@ -48,18 +94,19 @@ class AlleleMM(CategoricalMM):
         theta = np.array(self.theta[k])
         choices, probabilities = self.distributions[k]
         draws = np.random.choice(choices, p = probabilities)
-        samples = []
+        variations = []
         for i in np.arange(draws):
-            sample = np.random.choice(range(len(theta)), p = theta)
-            theta[self.overlaps[sample]] = 0
+            variation = np.random.choice(range(len(theta)), p = theta)
+            theta[self.overlaps[variation]] = 0
             theta = theta / sum(theta)
-            samples.append(sample)
-        return samples
-
-
+            variations.append(variation)
+        return variations
 
 
     def _compute_variation_distribution(self):
+        """
+        Computes the distribution of the amount of variations per individual within each cluster.
+        """
         self.distributions = [None] * self.clusters
         for i in range(self.clusters):
             self.distributions[i] = {}
@@ -76,6 +123,14 @@ class AlleleMM(CategoricalMM):
             self.distributions[i] = (choices, probabilities)
 
     def compute_variant_overlaps(self, variant_ranges, variant_map):
+        """
+        Computes the overlaps for each of the variants. This is important so no two overlapping variants will be sampled.
+
+        Args:
+            variant_ranges ([(variant_id, variant_start, variant_end)]): List containing tuples assigning each
+                variant its start and end position within the reference sequence.
+            variant_map ({variant_id : idx}): Dictionary mapping each variant id to its index in the inference matrix. 
+        """
         while variant_ranges:
             variant_id, start, end = variant_ranges.pop()
             variant_row = variant_map[variant_id]
