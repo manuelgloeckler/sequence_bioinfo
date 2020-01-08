@@ -418,7 +418,7 @@ class DataManager:
         
         return inference_matrix, individuals_map, variants_map
 
-    def get_variation_distribution(self, start = 0, end = None, population = "ALL", project = "1000GENOMES:phase_3"):
+    def get_variation_distribution(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3"):
         """
         Returns a dictionary mapping number of variants within the specified region 
         to the number of strands with that number of variants.
@@ -428,6 +428,8 @@ class DataManager:
                 Defaults to 0.
             end (int, optional): End (exclusive) of the section for which to consider variants.
                 Defaults to sys.maxsize.
+            reference_name (str, optional): Name of the reference sequence the variants should belong to.
+                If None is given it is assumed all variants in the DB belong to the same reference sequence.
             population (str, optional): Name of the population for which to
                 generate the distribution. Defaults to ALL.
             project (str, optional): Name of the project for which to generate the distribution.
@@ -440,14 +442,20 @@ class DataManager:
         """
         if end is None: end = sys.maxsize
         population = "{}:{}".format(project, population)
+        if reference_name is None:
+            reference_condition = ""
+            sql_args = (population, start, end)
+        else:
+            reference_condition = " AND referenceName = ?"
+            sql_args = (population, start, end, reference_name)
         variants_individuals = self.db_cursor.execute("""
         SELECT IV.individual, SUM(expression1), SUM(expression2) 
         FROM individuals_variants IV 
         JOIN individuals_populations IP ON IV.individual = IP.individual
         JOIN variants V ON IV.variant = V.id
-        WHERE population = ? AND start >= ? AND end < ?
+        WHERE population = ? AND start >= ? AND end < ?{}
         GROUP BY IV.individual;
-        """, (population, start, end))
+        """.format(reference_condition), sql_args)
 
         distribution = {}
         for entry in variants_individuals:
@@ -458,4 +466,53 @@ class DataManager:
         return distribution
 
 
+    def get_variation_range(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3"):
+        """
+        Returns a dictionary mapping number of variants within the specified region 
+        to the number of strands with that number of variants.
 
+        Args:
+            start (int, optional): Begining (inclusive) of the section for which to consider variants.
+                Defaults to 0.
+            end (int, optional): End (exclusive) of the section for which to consider variants.
+                Defaults to sys.maxsize.
+            reference_name (str, optional): Name of the reference sequence the variants should belong to.
+                If None is given it is assumed all variants in the DB belong to the same reference sequence.
+            population (str, optional): Name of the population for which to
+                generate the distribution. Defaults to ALL.
+            project (str, optional): Name of the project for which to generate the distribution.
+                Defaults to 1000GENOMES:phase_3. Our algorithms does not support all 
+                naming conventions.
+
+        Returns:
+            Set containing tuples of form (variant_id, variant_start, variant_end).
+        """
+        if end is None: end = sys.maxsize
+        population = "{}:{}".format(project, population)
+        if reference_name is None:
+            reference_condition = ""
+            sql_args = (population, start, end)
+        else:
+            reference_condition = " AND referenceName = ?"
+            sql_args = (population, start, end, reference_name)
+            
+        #TODO: Could probably optimize the sql query
+        variant_ranges = self.db_cursor.execute("""
+        SELECT V.id, V.start, V.end
+        FROM individuals_variants IV 
+        JOIN individuals_populations IP ON IV.individual = IP.individual
+        JOIN variants V ON IV.variant = V.id
+        WHERE population = ? AND start >= ? AND end < ?{};
+        """.format(reference_condition), sql_args)
+        variant_ranges = set(variant_ranges)
+        return variant_ranges
+
+
+
+            
+
+if __name__ == "__main__":
+    Database_Name = "Gentype_DB.db"
+    client = EnsemblClient()
+    data_manager = DataManager(client, Database_Name)
+    data_manager.get_variation_range(start = 29941260, end = 29945884, population = "ALL")
