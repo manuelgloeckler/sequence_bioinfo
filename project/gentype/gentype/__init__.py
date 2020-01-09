@@ -4,3 +4,4 @@ from .EnsemblClient import *
 from .inference import *
 from .model import *
 from .FastA import *
+from .Verifier import *
