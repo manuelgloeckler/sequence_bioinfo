@@ -2,3 +2,5 @@ from .DataManager import *
 from .DB_setup import *
 from .EnsemblClient import *
 from .inference import *
+from .model import *
+from .FastA import *
