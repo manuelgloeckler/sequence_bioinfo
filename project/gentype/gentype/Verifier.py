@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 
-def get_distances(samples, test_set):
+def get_distances(samples, test_set, return_assignments = False):
     # compute all occurences for every test sequence
     occurences = {}
     test_set = tuple(test_set)
@@ -42,4 +42,7 @@ def get_distances(samples, test_set):
         distribution_differences.append(np.absolute(test_quota - generated_quota))
     distribution_difference = sum(distribution_differences)
 
-    return assigned_scores.values(), distribution_difference
+    if return_assignments:
+        return assigned_scores, distribution_difference, assignments
+    else:
+        return assigned_scores, distribution_difference

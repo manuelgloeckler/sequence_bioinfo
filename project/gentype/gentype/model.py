@@ -73,7 +73,7 @@ class AlleleMM(CategoricalMM):
             self.compute_variant_overlaps(variant_ranges, variant_map)
 
 
-    def sample_variations(self, cluster = None):
+    def sample_variations(self, cluster = None, return_cluster = False):
         """
         Samples a set of variations from this model. Returns them as a bit vector (use the variant_map 
         from the inference_matrix creation to convert them to actual variant ids).
@@ -81,10 +81,12 @@ class AlleleMM(CategoricalMM):
         Args:
             cluster (int, optional): Index of the cluster to sample from. This should only provided if you want to 
                 poll from a specific cluster. If not given will sample properly from the entire model.
+            return_cluster (bool, optional): If set to true will also return the cluster this sample stems from.
 
         Returns:
             Bitvector containing a 1 if the variation is expressed and 0 if not (use the variant_map 
                 from the inference_matrix creation to convert them to actual variant ids).
+                If return_cluster is True this will also return the cluster the sample stems from.
         """
         if cluster is None:
             k = np.random.choice(range(len(self.pi)), p = self.pi)
@@ -99,7 +101,10 @@ class AlleleMM(CategoricalMM):
             theta[self.overlaps[variation]] = 0
             theta = theta / sum(theta)
             variations.append(variation)
-        return variations
+        if return_cluster:
+            return variations, k
+        else:
+            return variations
 
 
     def _compute_variation_distribution(self):
