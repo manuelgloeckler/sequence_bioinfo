@@ -4,6 +4,7 @@ import sys
 def get_distances(samples, test_set):
     # compute all occurences for every test sequence
     occurences = {}
+    test_set = tuple(test_set)
     for individual in test_set:
         individual = tuple(individual)
         occurences[individual] = occurences.get(individual, 0) + 1
@@ -16,7 +17,7 @@ def get_distances(samples, test_set):
         cur_score = sys.maxsize
         cur_seq = None
         scores = []
-        for individual in occurences:
+        for individual in test_set:
             score = sum([int(x)^int(y) for x, y in zip(sample, individual)])
             scores.append(score)
             if score < cur_score:
@@ -33,7 +34,7 @@ def get_distances(samples, test_set):
         inverted_assignments[tuple(assignments[key])] = cur_values
 
     # compute sum of distances for the assignments
-    distances = sum(assigned_scores.values())/len(assigned_scores)
+    distances = 
 
     # compute similarity of the distributions
     distribution_differences = []
@@ -43,4 +44,4 @@ def get_distances(samples, test_set):
         distribution_differences.append(np.absolute(test_quota - generated_quota))
     distribution_difference = sum(distribution_differences)
 
-    return distances, distribution_difference
+    return assigned_scores.values(), distribution_difference
