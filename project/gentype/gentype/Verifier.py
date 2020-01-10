@@ -33,8 +33,6 @@ def get_distances(samples, test_set):
         cur_values.append(key)
         inverted_assignments[tuple(assignments[key])] = cur_values
 
-    # compute sum of distances for the assignments
-    distances = 
 
     # compute similarity of the distributions
     distribution_differences = []
