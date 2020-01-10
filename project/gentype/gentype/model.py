@@ -69,7 +69,6 @@ class AlleleMM(CategoricalMM):
         self.clusters = int(max(self.Z)) + 1
         self.inference_matrix = inference_matrix
         self._compute_variation_distribution()        
-        self.overlaps = {}
         if not (variant_ranges is None or variant_map is None):
             self.compute_variant_overlaps(variant_ranges, variant_map)
 
@@ -131,6 +130,8 @@ class AlleleMM(CategoricalMM):
                 variant its start and end position within the reference sequence.
             variant_map ({variant_id : idx}): Dictionary mapping each variant id to its index in the inference matrix. 
         """
+        self.overlaps = {}
+        variant_ranges = list(variant_ranges) # make copy to not destroy given list
         while variant_ranges:
             variant_id, start, end = variant_ranges.pop()
             variant_row = variant_map[variant_id]
