@@ -66,7 +66,7 @@ class AlleleMM(CategoricalMM):
         pi = CategoricalMM.ML_est_pi(Z)
         super().__init__(pi, theta)
         self.Z = Z
-        self.clusters = int(max(self.Z)) + 1
+        self.clusters = int(len(self.theta))
         self.inference_matrix = inference_matrix
         self._compute_variation_distribution()        
         if not (variant_ranges is None or variant_map is None):

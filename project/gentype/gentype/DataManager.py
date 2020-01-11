@@ -360,7 +360,7 @@ class DataManager:
 
 
 
-    def generate_inference_matrix(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False):
+    def generate_inference_matrix(self, start = 0, end = None, reference_name = None, population = "ALL", project = "1000GENOMES:phase_3", sum_allels = False, shuffle = True):
         """
         Generates the inference matrix for the section specified by start and end,
         based on the database and the given reference sequence (chromosome), project and population.
@@ -381,6 +381,7 @@ class DataManager:
             sum_allels (bool, optional): When True, expression of a variant will be collected per individual,
                 summing the expression per strand (if expressed on both -> 2, on one -> 1, on neither -> 0).
                 Defaults to False.
+            shuffle (bool, optional): When True, shuffles data fetched from the database before creating the matrix.
         Returns:
             inference matrix. Each row in the matrix represents an individual,
                 each column a variant.
@@ -411,6 +412,7 @@ class DataManager:
         number_individuals = 0
         variants_map = {}
         individuals_map = {}
+        if shuffle: np.random.shuffle(variants_individuals)
         for entry in variants_individuals:
             variant, individual, expr1, expr2 = entry
             if not variant in variants_map:

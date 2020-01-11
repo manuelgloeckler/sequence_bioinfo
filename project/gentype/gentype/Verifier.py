@@ -8,6 +8,11 @@ def get_distances(samples, test_set, return_assignments = False):
     for individual in test_set:
         individual = tuple(individual)
         occurences[individual] = occurences.get(individual, 0) + 1
+    sample_occurences = {}
+    samples = tuple(samples)
+    for sample in samples:
+        sample = tuple(sample)
+        sample_occurences[sample] = sample_occurences.get(sample, 0) + 1
 
     # assign each sample sequence to one of the test set
     assignments = {}
@@ -24,25 +29,27 @@ def get_distances(samples, test_set, return_assignments = False):
                 cur_score = score
                 cur_seq = individual
                 cur_comp = [int(x)^int(y) for x, y in zip(sample, individual)]
-        #print("seq1: {}\n seq2: {} \n comparison: {}\n score: {}, scores : {}".format("".join([str(int(x)) for  x in cur_seq]), "".join([str(int(x)) for  x in sample]),"".join([str(int(x)) for  x in cur_comp]) , cur_score, scores))
         assignments[sample] = cur_seq
         assigned_scores[sample] = cur_score
+
     inverted_assignments = {}
     for key in assignments:
-        cur_values = inverted_assignments.get(key, [])
+        cur_values = inverted_assignments.get(tuple(assignments[key]), [])
         cur_values.append(key)
         inverted_assignments[tuple(assignments[key])] = cur_values
 
 
     # compute similarity of the distributions
-    distribution_differences = []
+    distributions = {}
     for individual in occurences:
         test_quota = occurences[individual] / len(test_set)
-        generated_quota = len(inverted_assignments.get(individual, [])) / len(samples)
-        distribution_differences.append(np.absolute(test_quota - generated_quota))
-    distribution_difference = sum(distribution_differences)
+        assigned_samples = 0
+        for sample in inverted_assignments.get(individual, []):
+            assigned_samples += sample_occurences[sample]
+        generated_quota = assigned_samples / len(samples)
+        distributions[individual] = (test_quota, generated_quota)
 
     if return_assignments:
-        return assigned_scores, distribution_difference, assignments
+        return assigned_scores, distributions, assignments
     else:
-        return assigned_scores, distribution_difference
+        return assigned_scores, distributions
