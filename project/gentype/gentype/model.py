@@ -1,5 +1,5 @@
 import numpy as np
-
+from .FastA import write_sequences
 class CategoricalMM:
     """
     General categorical mixture model.
@@ -150,4 +150,35 @@ class AlleleMM(CategoricalMM):
                     self.overlaps[other_row] = self.overlaps.get(other_row, [])
                     self.overlaps[other_row].append(variant_row)
                 
+    def generate_sequences(self, number_of_sequences, variation_map, data_manager, start, end, reference_name, population = "ALL", project = "1000GENOMES:phase_3", filename = None):
+        invert_variation_map = {}
+        for key in variation_map:
+            invert_variation_map[variation_map[key]] = key
+        alternates_map = data_manager.get_variation_alternate(start, end, reference_name, population, project)
+        seq_data = data_manager.fetch_region(start, end, reference_name)
+        seq = seq_data['seq']
+        header = seq_data['id']
+        offset = start
+        sequences = []
+        headers = []
+        for i in range(number_of_sequences):
+            sample = self.sample_variations()
+            selected_variants = [alternates_map[invert_variation_map[index]] for index in sample]
+            selected_variants.sort(key = lambda x: x[1])
+            sequence_parts = []
+            start = 0
+            offset_start = 0
+            for variant in selected_variants:
+                offset_start = variant[1] - offset
+                offset_end = variant[2] - offset
+                sequence_parts.append(seq[start: offset_start])
+                sequence_parts.append(np.random.choice(variant[0]))
+                start = offset_end
+            sequence_parts.append(seq[start:])
+            generated_sequence = "".join(sequence_parts)
+            sequences.append(generated_sequence)
+            headers.append(">{} - artifical variation {}".format(header, i))
+        if not filename is None:
+            write_sequences("{}.fasta".format(filename), headers, sequences)
+        return headers, sequences
 
