@@ -1,8 +1,24 @@
-from JC_Tree import *
-from FastA import *
-from SeqGenerator import *
 import argparse
 
+import numpy as np
+
+from FastA import *
+from JC_Tree import *
+from SeqGenerator import *
+
+
+def write_distances(headers, sequences):
+    print(headers)
+    matrixH = np.zeros((len(sequences),len(sequences)))
+    # calculate Hamming
+    for i,seq in enumerate(sequences):
+        for j in range(i,len(sequences)):
+            dist = np.sum(np.array(list(seq)) != np.array(list(sequences[j])))
+            matrixH[i,j] = dist
+    print(matrixH)
+    # calculate JC
+    matrixJC = np.round(-(3/4) * np.log(1 - (4/3) * matrixH/len(sequences[0])), 4)
+    print(matrixJC)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Artificial phylogenetic tree construction based on Jukes Cantor.")
@@ -37,6 +53,9 @@ def run(newick_string, sequence_length, mutation_rate, output):
     headers = ["> {}".format(leaf.name) for leaf in leafs]
     sequences = [seq_generator.vector_to_seq(leaf.sequence) for leaf in leafs]
     write_sequences(output, headers, sequences)
+    write_comparison(output, headers, sequences)
+    write_distances(headers,sequences)
+
     print("Output written to {}.".format(output))
 
 
